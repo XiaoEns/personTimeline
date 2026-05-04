@@ -35,6 +35,9 @@
 - 使用 Conventional Commits: `feat:`, `fix:`, `refactor:`, `docs:`, `chore:`
 - 提交信息控制在 50 字以内，聚焦 Why 而非 What
 
+### 交互约束
+- **修改端口必须询问用户意见**，不得直接修改服务端口或代理目标端口
+
 ### 前后端并行开发
 - 窗口 1（后端）：`uvicorn main:app --reload --port 8000`
 - 窗口 2（前端）：`pnpm dev`

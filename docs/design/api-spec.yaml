@@ -1,0 +1,1135 @@
+openapi: "3.0.3"
+info:
+  title: personTimeline API
+  description: 多人物传记时间轴系统 — 第一阶段 API 规范
+  version: "1.0.0"
+  contact:
+    name: personTimeline
+
+servers:
+  - url: http://localhost:8000
+    description: 本地开发环境
+
+paths:
+  # ============================================================
+  # 人物管理
+  # ============================================================
+  /api/persons:
+    get:
+      summary: 人物列表
+      description: 获取人物列表，支持分页和模糊搜索
+      operationId: listPersons
+      tags: [人物管理]
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/pageSize"
+        - name: search
+          in: query
+          schema: { type: string, maxLength: 200 }
+          description: 按姓名模糊搜索
+        - name: status
+          in: query
+          schema: { type: string, enum: [draft, published] }
+          description: 按状态筛选
+      responses:
+        "200":
+          description: 人物列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedPersons"
+
+    post:
+      summary: 创建人物
+      operationId: createPerson
+      tags: [人物管理]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PersonCreate"
+      responses:
+        "201":
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Person"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /api/persons/{personId}:
+    get:
+      summary: 人物详情
+      operationId: getPerson
+      tags: [人物管理]
+      parameters:
+        - $ref: "#/components/parameters/personId"
+      responses:
+        "200":
+          description: 人物详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonDetail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      summary: 更新人物
+      operationId: updatePerson
+      tags: [人物管理]
+      parameters:
+        - $ref: "#/components/parameters/personId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PersonUpdate"
+      responses:
+        "200":
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Person"
+
+    delete:
+      summary: 删除人物
+      operationId: deletePerson
+      tags: [人物管理]
+      parameters:
+        - $ref: "#/components/parameters/personId"
+      responses:
+        "204":
+          description: 删除成功（无内容）
+
+  # ============================================================
+  # 事件管理
+  # ============================================================
+  /api/events:
+    get:
+      summary: 事件列表
+      operationId: listEvents
+      tags: [事件管理]
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/pageSize"
+        - name: person_id
+          in: query
+          schema: { type: string, format: uuid }
+          description: 按关联人物筛选
+        - name: event_type
+          in: query
+          schema: { $ref: "#/components/schemas/EventType" }
+          description: 按事件类型筛选
+        - name: time_type
+          in: query
+          schema: { $ref: "#/components/schemas/TimeType" }
+          description: 按时间类型筛选
+        - name: search
+          in: query
+          schema: { type: string, maxLength: 500 }
+          description: 按标题模糊搜索
+        - name: sort
+          in: query
+          schema: { type: string, enum: [sort_date, -sort_date, created_at, -created_at], default: sort_date }
+          description: 排序字段（加 - 前缀表示降序）
+      responses:
+        "200":
+          description: 事件列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedEvents"
+
+    post:
+      summary: 创建事件
+      operationId: createEvent
+      tags: [事件管理]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventCreate"
+      responses:
+        "201":
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventDetail"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /api/events/{eventId}:
+    get:
+      summary: 事件详情
+      operationId: getEvent
+      tags: [事件管理]
+      parameters:
+        - $ref: "#/components/parameters/eventId"
+      responses:
+        "200":
+          description: 事件详情（含关联人物）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventDetail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      summary: 更新事件
+      operationId: updateEvent
+      tags: [事件管理]
+      parameters:
+        - $ref: "#/components/parameters/eventId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventUpdate"
+      responses:
+        "200":
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventDetail"
+
+    delete:
+      summary: 删除事件
+      operationId: deleteEvent
+      tags: [事件管理]
+      parameters:
+        - $ref: "#/components/parameters/eventId"
+      responses:
+        "204":
+          description: 删除成功（无内容）
+
+  # ============================================================
+  # 人物-事件关联
+  # ============================================================
+  /api/persons/{personId}/events:
+    get:
+      summary: 人物关联事件列表
+      description: 获取指定人物关联的所有事件
+      operationId: listPersonEvents
+      tags: [人物-事件关联]
+      parameters:
+        - $ref: "#/components/parameters/personId"
+      responses:
+        "200":
+          description: 关联事件列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonEventList"
+
+    post:
+      summary: 关联事件到人物
+      operationId: createPersonEvent
+      tags: [人物-事件关联]
+      parameters:
+        - $ref: "#/components/parameters/personId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PersonEventCreate"
+      responses:
+        "201":
+          description: 关联成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonEvent"
+        "409":
+          description: 已存在关联
+
+  /api/person-events/{personEventId}:
+    put:
+      summary: 更新关联信息
+      operationId: updatePersonEvent
+      tags: [人物-事件关联]
+      parameters:
+        - $ref: "#/components/parameters/personEventId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PersonEventUpdate"
+      responses:
+        "200":
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonEvent"
+
+    delete:
+      summary: 解除关联
+      operationId: deletePersonEvent
+      tags: [人物-事件关联]
+      parameters:
+        - $ref: "#/components/parameters/personEventId"
+      responses:
+        "204":
+          description: 解除成功（无内容）
+
+  # ============================================================
+  # 别名管理
+  # ============================================================
+  /api/persons/{personId}/aliases:
+    get:
+      summary: 获取别名列表
+      operationId: listAliases
+      tags: [别名管理]
+      parameters:
+        - $ref: "#/components/parameters/personId"
+      responses:
+        "200":
+          description: 别名列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AliasList"
+
+    post:
+      summary: 添加别名
+      operationId: createAlias
+      tags: [别名管理]
+      parameters:
+        - $ref: "#/components/parameters/personId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AliasCreate"
+      responses:
+        "201":
+          description: 添加成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Alias"
+
+  /api/persons/{personId}/aliases/{alias}:
+    delete:
+      summary: 删除别名
+      operationId: deleteAlias
+      tags: [别名管理]
+      parameters:
+        - $ref: "#/components/parameters/personId"
+        - name: alias
+          in: path
+          required: true
+          schema: { type: string }
+          description: 别名（需 URL 编码）
+      responses:
+        "204":
+          description: 删除成功（无内容）
+
+  # ============================================================
+  # 文件上传与传记文本
+  # ============================================================
+  /api/upload:
+    post:
+      summary: 上传传记文件
+      description: 上传 TXT 或 PDF 文件，提取文本后关联到人物
+      operationId: uploadBiography
+      tags: [上传与抽取]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, person_id]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: 传记文件（.txt 或 .pdf）
+                person_id:
+                  type: string
+                  format: uuid
+                  description: 关联人物 ID
+      responses:
+        "201":
+          description: 上传成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BiographyText"
+        "400":
+          description: 不支持的文件格式
+
+  /api/persons/{personId}/biography:
+    get:
+      summary: 获取人物传记文本列表
+      operationId: listBiographyTexts
+      tags: [上传与抽取]
+      parameters:
+        - $ref: "#/components/parameters/personId"
+      responses:
+        "200":
+          description: 传记文本列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BiographyTextList"
+
+  /api/biography/{biographyId}:
+    delete:
+      summary: 删除传记文本
+      operationId: deleteBiography
+      tags: [上传与抽取]
+      parameters:
+        - $ref: "#/components/parameters/biographyId"
+      responses:
+        "204":
+          description: 删除成功（无内容）
+
+  # ============================================================
+  # AI 事件抽取
+  # ============================================================
+  /api/persons/{personId}/extract:
+    post:
+      summary: AI 事件抽取
+      description: 调用大模型从传记文本中提取结构化事件并自动创建
+      operationId: extractEvents
+      tags: [上传与抽取]
+      parameters:
+        - $ref: "#/components/parameters/personId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExtractRequest"
+      responses:
+        "200":
+          description: 抽取完成，返回创建的事件列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtractResult"
+        "504":
+          description: AI 服务超时
+
+components:
+  parameters:
+    personId:
+      name: personId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+      description: 人物 ID
+    eventId:
+      name: eventId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+      description: 事件 ID
+    personEventId:
+      name: personEventId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+      description: 关联记录 ID
+    biographyId:
+      name: biographyId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+      description: 传记文本 ID
+    page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+      description: 页码，从 1 开始
+    pageSize:
+      name: page_size
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      description: 每页条数
+
+  responses:
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    ValidationError:
+      description: 请求参数校验失败
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    # ---------- 枚举 ----------
+    TimeType:
+      type: string
+      enum: [POINT, PERIOD, FUZZY]
+      description: 时间类型：时间点/时间段/模糊时段
+
+    Granularity:
+      type: string
+      enum: [YEAR, MONTH, DAY, SEASON]
+      description: 时间粒度
+
+    EventType:
+      type: string
+      enum: [BIRTH, DEATH, EDUCATION, CAREER, CREATION, HISTORICAL, OTHER]
+      description: 事件类型
+
+    PersonStatus:
+      type: string
+      enum: [draft, published]
+      description: 人物发布状态
+
+    # ---------- 通用 ----------
+    Error:
+      type: object
+      required: [detail]
+      properties:
+        detail:
+          type: string
+          description: 错误信息
+
+    Pagination:
+      type: object
+      required: [items, total, page, page_size]
+      properties:
+        items:
+          type: array
+          items: {}
+        total:
+          type: integer
+          description: 总记录数
+        page:
+          type: integer
+          description: 当前页码
+        page_size:
+          type: integer
+          description: 每页条数
+
+    # ---------- 人物 ----------
+    Person:
+      type: object
+      required: [id, name, status, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 200
+        birth_date:
+          type: string
+          format: date-time
+          nullable: true
+        death_date:
+          type: string
+          format: date-time
+          nullable: true
+        birth_display:
+          type: string
+          maxLength: 100
+          nullable: true
+        death_display:
+          type: string
+          maxLength: 100
+          nullable: true
+        avatar_url:
+          type: string
+          maxLength: 500
+          nullable: true
+        summary:
+          type: string
+          nullable: true
+        status:
+          $ref: "#/components/schemas/PersonStatus"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    PersonCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        birth_date:
+          type: string
+          format: date-time
+          nullable: true
+        death_date:
+          type: string
+          format: date-time
+          nullable: true
+        birth_display:
+          type: string
+          maxLength: 100
+          nullable: true
+        death_display:
+          type: string
+          maxLength: 100
+          nullable: true
+        avatar_url:
+          type: string
+          maxLength: 500
+          nullable: true
+        summary:
+          type: string
+          nullable: true
+
+    PersonUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        birth_date:
+          type: string
+          format: date-time
+          nullable: true
+        death_date:
+          type: string
+          format: date-time
+          nullable: true
+        birth_display:
+          type: string
+          maxLength: 100
+          nullable: true
+        death_display:
+          type: string
+          maxLength: 100
+          nullable: true
+        avatar_url:
+          type: string
+          maxLength: 500
+          nullable: true
+        summary:
+          type: string
+          nullable: true
+        status:
+          $ref: "#/components/schemas/PersonStatus"
+
+    PersonListItem:
+      type: object
+      required: [id, name, status, event_count, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        birth_date:
+          type: string
+          format: date-time
+          nullable: true
+        death_date:
+          type: string
+          format: date-time
+          nullable: true
+        avatar_url:
+          type: string
+          nullable: true
+        summary:
+          type: string
+          nullable: true
+        status:
+          $ref: "#/components/schemas/PersonStatus"
+        event_count:
+          type: integer
+          description: 关联事件数量
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    PaginatedPersons:
+      allOf:
+        - $ref: "#/components/schemas/Pagination"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/PersonListItem"
+
+    PersonDetail:
+      allOf:
+        - $ref: "#/components/schemas/Person"
+        - type: object
+          properties:
+            event_count:
+              type: integer
+            aliases:
+              type: array
+              items:
+                type: string
+
+    # ---------- 事件 ----------
+    PersonRef:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        role:
+          type: string
+          nullable: true
+
+    Event:
+      type: object
+      required: [id, title, start_date, end_date, time_type, granularity, event_type, is_inferred, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 500
+        description:
+          type: string
+          nullable: true
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+        display_time:
+          type: string
+          maxLength: 200
+          nullable: true
+        time_type:
+          $ref: "#/components/schemas/TimeType"
+        sort_date:
+          type: string
+          format: date-time
+        granularity:
+          $ref: "#/components/schemas/Granularity"
+        event_type:
+          $ref: "#/components/schemas/EventType"
+        location:
+          type: object
+        is_inferred:
+          type: boolean
+        source:
+          type: string
+          maxLength: 1000
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    EventCreate:
+      type: object
+      required: [title, start_date, end_date, time_type, granularity, event_type]
+      properties:
+        title:
+          type: string
+          maxLength: 500
+        description:
+          type: string
+          nullable: true
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+        display_time:
+          type: string
+          maxLength: 200
+          nullable: true
+        time_type:
+          $ref: "#/components/schemas/TimeType"
+        granularity:
+          $ref: "#/components/schemas/Granularity"
+        event_type:
+          $ref: "#/components/schemas/EventType"
+        location:
+          type: object
+          nullable: true
+        source:
+          type: string
+          maxLength: 1000
+          nullable: true
+        person_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: 创建事件时直接关联的人物 ID 列表
+
+    EventUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 500
+        description:
+          type: string
+          nullable: true
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+        display_time:
+          type: string
+          maxLength: 200
+          nullable: true
+        time_type:
+          $ref: "#/components/schemas/TimeType"
+        granularity:
+          $ref: "#/components/schemas/Granularity"
+        event_type:
+          $ref: "#/components/schemas/EventType"
+        location:
+          type: object
+          nullable: true
+        source:
+          type: string
+          maxLength: 1000
+          nullable: true
+
+    EventListItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+        display_time:
+          type: string
+          nullable: true
+        time_type:
+          $ref: "#/components/schemas/TimeType"
+        event_type:
+          $ref: "#/components/schemas/EventType"
+        sort_date:
+          type: string
+          format: date-time
+        is_inferred:
+          type: boolean
+        persons:
+          type: array
+          items:
+            $ref: "#/components/schemas/PersonRef"
+        created_at:
+          type: string
+          format: date-time
+
+    PaginatedEvents:
+      allOf:
+        - $ref: "#/components/schemas/Pagination"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/EventListItem"
+
+    EventDetail:
+      allOf:
+        - $ref: "#/components/schemas/Event"
+        - type: object
+          properties:
+            persons:
+              type: array
+              items:
+                $ref: "#/components/schemas/PersonRef"
+
+    # ---------- 人物-事件关联 ----------
+    PersonEvent:
+      type: object
+      required: [id, person_id, event_id, is_primary, sort_order, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        person_id:
+          type: string
+          format: uuid
+        event_id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          maxLength: 100
+          nullable: true
+        personal_title:
+          type: string
+          maxLength: 500
+          nullable: true
+        personal_display_time:
+          type: string
+          maxLength: 200
+          nullable: true
+        personal_start_date:
+          type: string
+          format: date-time
+          nullable: true
+        personal_end_date:
+          type: string
+          format: date-time
+          nullable: true
+        is_primary:
+          type: boolean
+        sort_order:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    PersonEventCreate:
+      type: object
+      required: [event_id]
+      properties:
+        event_id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          maxLength: 100
+          nullable: true
+        personal_title:
+          type: string
+          maxLength: 500
+          nullable: true
+        personal_display_time:
+          type: string
+          maxLength: 200
+          nullable: true
+        is_primary:
+          type: boolean
+          default: false
+        sort_order:
+          type: integer
+          default: 0
+
+    PersonEventUpdate:
+      type: object
+      properties:
+        role:
+          type: string
+          maxLength: 100
+          nullable: true
+        personal_title:
+          type: string
+          maxLength: 500
+          nullable: true
+        personal_display_time:
+          type: string
+          maxLength: 200
+          nullable: true
+        is_primary:
+          type: boolean
+        sort_order:
+          type: integer
+
+    PersonEventItem:
+      type: object
+      properties:
+        event_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        personal_title:
+          type: string
+          nullable: true
+        role:
+          type: string
+          nullable: true
+        sort_order:
+          type: integer
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+        time_type:
+          $ref: "#/components/schemas/TimeType"
+        event_type:
+          $ref: "#/components/schemas/EventType"
+
+    PersonEventList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PersonEventItem"
+
+    # ---------- 别名 ----------
+    Alias:
+      type: object
+      required: [alias, person_id]
+      properties:
+        alias:
+          type: string
+        person_id:
+          type: string
+          format: uuid
+
+    AliasCreate:
+      type: object
+      required: [alias]
+      properties:
+        alias:
+          type: string
+          maxLength: 200
+
+    AliasList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: string
+
+    # ---------- 传记文本 ----------
+    BiographyText:
+      type: object
+      required: [id, person_id, raw_text, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        person_id:
+          type: string
+          format: uuid
+        source_file:
+          type: string
+          nullable: true
+        page:
+          type: integer
+          nullable: true
+        text_length:
+          type: integer
+          description: 文本长度
+        created_at:
+          type: string
+          format: date-time
+
+    BiographyTextItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        source_file:
+          type: string
+          nullable: true
+        text_length:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    BiographyTextList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/BiographyTextItem"
+
+    # ---------- AI 抽取 ----------
+    ExtractRequest:
+      type: object
+      properties:
+        biography_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: 指定抽取的文本 ID，为空则使用该人物所有文本
+        model:
+          type: string
+          enum: [qwen, gpt, default]
+          default: default
+          description: 使用的大模型
+
+    ExtractEventItem:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+        display_time:
+          type: string
+          nullable: true
+        time_type:
+          $ref: "#/components/schemas/TimeType"
+        granularity:
+          $ref: "#/components/schemas/Granularity"
+        event_type:
+          $ref: "#/components/schemas/EventType"
+        location:
+          type: object
+          nullable: true
+        event_id:
+          type: string
+          format: uuid
+          description: 已创建的事件 ID
+        is_inferred:
+          type: boolean
+
+    ExtractResult:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: 抽取的事件总数
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExtractEventItem"

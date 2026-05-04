@@ -16,13 +16,19 @@ personTimeline/
 ├── apps/
 │   ├── frontend/         # 前端应用（Vue 3 + Vite）
 │   │   └── src/
-│   │       ├── app/           # 应用配置
-│   │       ├── modules/       # 业务模块
-│   │       └── shared/        # 共享资源
+│   │       ├── api/           # API 调用层
+│   │       ├── layouts/       # 布局组件
+│   │       ├── router/        # 路由配置
+│   │       ├── styles/        # 样式
+│   │       └── views/         # 页面组件
 │   └── backend/          # 后端应用（FastAPI + Python）
-│       └── src/
-│           ├── modules/       # 业务模块
-│           └── shared/        # 共享资源
+│       ├── main.py           # 应用入口
+│       ├── config.py         # 配置管理
+│       ├── database.py       # 数据库连接
+│       ├── models/           # SQLAlchemy ORM 模型
+│       ├── schemas/          # Pydantic 请求/响应 Schema
+│       ├── routers/          # API 路由
+│       └── services/         # 业务逻辑层
 ├── docs/
 │   ├── requirements/     # 需求文档
 │   ├── design/           # 设计文档

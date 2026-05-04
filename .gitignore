@@ -29,5 +29,12 @@ Thumbs.db
 *.log
 npm-debug.log*
 
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+dist/
+
 # 本地配置
 CLAUDE.local.md
