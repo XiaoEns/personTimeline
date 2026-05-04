@@ -5,13 +5,30 @@
 
 ## 技术栈
 - **后端**: Python 3.11+ / FastAPI / PostgreSQL 15+
-- **前端**: Vue 3 (Composition API) + Vite + Pinia + Vue Router
+- **前端（主）**: React 19 + TypeScript + Vite + Zustand + React Router + Ant Design 5
+- **前端（旧）**: Vue 3 (Composition API) + Vite + Pinia + Vue Router + Element Plus（逐步弃用）
 - **可视化**: D3.js (SVG)
-- **样式**: Tailwind CSS v4 + Headless UI
+- **样式**: Tailwind CSS v4
 - **包管理**: pnpm
 
 ## 项目结构
 详见 [README.md](README.md) 中的目录结构说明。
+
+React 版前端（`apps/frontend2/`）结构：
+```
+src/
+├── api/              # API 调用层（与后端共享类型）
+├── components/       # 复用组件
+├── hooks/            # 自定义 React Hooks
+├── layouts/          # 布局组件
+├── pages/            # 页面组件
+│   ├── admin/        # 管理端页面
+│   └── viewer/       # 展示端页面
+├── router/           # 路由配置
+├── stores/           # Zustand 状态管理
+├── styles/           # 样式
+└── mocks/            # MSW 模拟数据
+```
 
 ## 核心数据模型
 - **person** — 人物（含规范化时间+原文表述分离）
@@ -40,7 +57,8 @@
 
 ### 前后端并行开发
 - 窗口 1（后端）：`uvicorn main:app --reload --port 8000`
-- 窗口 2（前端）：`pnpm dev`
+- 窗口 2（前端 React）：`cd apps/frontend2 && pnpm dev`（端口 3001）
+- 窗口 3（前端 Vue，可选）：`cd apps/frontend && pnpm dev`（端口 3000）
 - API 契约 → `packages/api-types/`，前端 mock 先行
 
 ## 如何让 Claude 理解本项目

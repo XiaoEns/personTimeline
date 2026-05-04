@@ -37,16 +37,16 @@
 | NER/事件抽取 | spaCy / HanLP + 大语言模型辅助（OpenAI API、Qwen 等） |
 | 时间解析 | dateparser、ctparse、自定义规则 |
 | 实体对齐 | sentence-transformers（多语言模型） |
-| 前端框架 | Vue 3 (Composition API) + Vite |
-| 状态管理 | Pinia |
+| 前端框架 | React 19 + TypeScript + Vite |
+| 状态管理 | Zustand |
 | 可视化 | D3.js (SVG) |
-| 样式/组件库 | Tailwind CSS v4 + Element Plus（含图标库 @element-plus/icons-vue） |
-| 组件按需加载 | unplugin-auto-import + unplugin-vue-components（Element Plus 自动按需导入） |
-| 前端路由 | Vue Router（管理端 /admin，展示端 /view） |
-| 网络请求 | Axios / fetch |
+| 样式/组件库 | Tailwind CSS v4 + Ant Design 5（含 @ant-design/icons） |
+| 前端路由 | React Router（管理端 /admin，展示端 /view） |
+| 网络请求 | Axios |
 | 包管理 | pnpm |
 
 > 注：第一阶段暂不引入 Celery/Redis 任务队列和 OCR 流水线，直接同步处理。OCR 能力后续阶段再集成。
+> 注：应用已从 Vue 3（Vue Router + Pinia + Element Plus）迁移至 React 技术栈。
 
 ## 4. 事件管理策略
 
@@ -61,11 +61,11 @@
 - 人物管理列表：姓名、生卒年、事件数量、状态 + 操作按钮（编辑/删除/时间轴/事件）
   - **时间轴** → 跳转展示端 `/view/persons/:id`
   - **事件** → 跳转事件列表按该人物筛选
-  - 新建/编辑人物 → 弹出框形式（ElDialog），不再跳转子页面
-  - 删除确认 → Element Plus 消息弹框（ElMessageBox）
+  - 新建/编辑人物 → 弹出框形式（Modal），不再跳转子页面
+  - 删除确认 → Ant Design 消息弹框（Modal.confirm）
 - 事件库：按人物、类型、时间搜索
   - 支持从人物列表传递 `person_id` 参数筛选
-  - 新建/编辑事件 → 弹出框形式（ElDialog），不再跳转子页面
+  - 新建/编辑事件 → 弹出框形式（Modal），不再跳转子页面
 - 对齐工作台：待确认的事件对齐对，并排对比、一键合并/拆分
 - 上传与处理页：上传传记文件，查看处理进度
 
@@ -123,7 +123,7 @@
 
 ### 前后端并行开发
 - 窗口 1（后端）：FastAPI 开发服务器
-- 窗口 2（前端）：Vite 开发服务器
+- 窗口 2（前端）：Vite 开发服务器（React）
 - API 契约定义先行，前端 mock 数据并行开发
 
 ## 9. 注意事项
