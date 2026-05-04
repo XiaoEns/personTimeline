@@ -1,83 +1,34 @@
-import { useEffect, useState, useCallback } from 'react'
 import { Button, Input, Select, Table, Tag, Pagination, message, Modal } from 'antd'
-import { useEventStore } from '@/stores/event'
+import { useEventList } from '@/hooks/useEventList'
 import EventFormDialog from '@/components/EventFormDialog'
-import { useSearchParams } from 'react-router-dom'
 
-const EVENT_TYPE_LABELS: Record<string, string> = {
-  BIRTH: '出生',
-  DEATH: '死亡',
-  EDUCATION: '教育',
-  CAREER: '仕途',
-  CREATION: '创作',
-  HISTORICAL: '历史',
-  OTHER: '其他',
+const EVENT_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
+  BIRTH: { label: '出生', color: 'success' },
+  DEATH: { label: '死亡', color: 'danger' },
+  EDUCATION: { label: '教育', color: 'processing' },
+  CAREER: { label: '仕途', color: 'warning' },
+  CREATION: { label: '创作', color: 'purple' },
+  HISTORICAL: { label: '历史', color: 'geekblue' },
+  OTHER: { label: '其他', color: 'default' },
 }
 
-const EVENT_TYPE_COLORS: Record<string, string> = {
-  BIRTH: 'success',
-  DEATH: 'danger',
-  EDUCATION: 'processing',
-  CAREER: 'warning',
-  CREATION: 'purple',
-  HISTORICAL: 'geekblue',
-  OTHER: 'default',
-}
-
-const TIME_TYPE_LABELS: Record<string, string> = {
+const TIME_TYPE_LABEL: Record<string, string> = {
   POINT: '时间点',
   PERIOD: '时间段',
   FUZZY: '模糊',
 }
 
 export default function EventList() {
-  const store = useEventStore()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [search, setSearch] = useState('')
-  const [eventTypeFilter, setEventTypeFilter] = useState('')
-  const [timeTypeFilter, setTimeTypeFilter] = useState('')
-  const [personIdFilter, setPersonIdFilter] = useState<string | undefined>(undefined)
-  const [personNameFilter, setPersonNameFilter] = useState<string | undefined>(undefined)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editingEventId, setEditingEventId] = useState<string | null>(null)
-
-  useEffect(() => {
-    const pid = searchParams.get('person_id')
-    const pname = searchParams.get('person_name')
-    if (pid) setPersonIdFilter(pid)
-    if (pname) setPersonNameFilter(pname)
-  }, [])
-
-  const fetchData = useCallback(() => {
-    store.fetchList({
-      page: currentPage,
-      page_size: store.pageSize,
-      search: search || undefined,
-      event_type: (eventTypeFilter || undefined) as any,
-      time_type: (timeTypeFilter || undefined) as any,
-      person_id: personIdFilter,
-    })
-  }, [currentPage, search, eventTypeFilter, timeTypeFilter, personIdFilter])
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setCurrentPage(1)
-      fetchData()
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [search, eventTypeFilter, timeTypeFilter])
-
-  useEffect(() => {
-    fetchData()
-  }, [currentPage, personIdFilter])
-
-  const clearPersonFilter = () => {
-    setPersonIdFilter(undefined)
-    setPersonNameFilter(undefined)
-    setCurrentPage(1)
-    setSearchParams({})
-  }
+  const {
+    store, search, setSearch,
+    eventTypeFilter, setEventTypeFilter,
+    timeTypeFilter, setTimeTypeFilter,
+    personNameFilter,
+    currentPage, setCurrentPage,
+    dialogOpen, editingEventId,
+    openCreate, openEdit, closeDialog,
+    clearPersonFilter, fetchData,
+  } = useEventList()
 
   const handleDelete = (id: string, title: string) => {
     Modal.confirm({
@@ -107,18 +58,17 @@ export default function EventList() {
       dataIndex: 'event_type',
       key: 'event_type',
       width: 90,
-      render: (type: string) => (
-        <Tag color={EVENT_TYPE_COLORS[type] || 'default'}>{EVENT_TYPE_LABELS[type] || type}</Tag>
-      ),
+      render: (type: string) => {
+        const cfg = EVENT_TYPE_CONFIG[type] || { label: type, color: 'default' }
+        return <Tag color={cfg.color}>{cfg.label}</Tag>
+      },
     },
     {
       title: '时间',
       dataIndex: 'time_type',
       key: 'time_type',
       width: 100,
-      render: (type: string) => (
-        <Tag>{TIME_TYPE_LABELS[type] || type}</Tag>
-      ),
+      render: (type: string) => <Tag>{TIME_TYPE_LABEL[type] || type}</Tag>,
     },
     {
       title: '关联人物',
@@ -142,12 +92,8 @@ export default function EventList() {
       fixed: 'right' as const,
       render: (_: unknown, row: { id: string; title: string }) => (
         <div className="flex gap-1">
-          <Button type="link" size="small" onClick={() => { setEditingEventId(row.id); setDialogOpen(true) }}>
-            编辑
-          </Button>
-          <Button type="link" size="small" danger onClick={() => handleDelete(row.id, row.title)}>
-            删除
-          </Button>
+          <Button type="link" size="small" onClick={() => openEdit(row.id)}>编辑</Button>
+          <Button type="link" size="small" danger onClick={() => handleDelete(row.id, row.title)}>删除</Button>
         </div>
       ),
     },
@@ -157,9 +103,7 @@ export default function EventList() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold">事件管理</h2>
-        <Button type="primary" onClick={() => { setEditingEventId(null); setDialogOpen(true) }}>
-          + 新建事件
-        </Button>
+        <Button type="primary" onClick={openCreate}>+ 新建事件</Button>
       </div>
 
       <div className="flex items-center gap-4 mb-4">
@@ -179,8 +123,8 @@ export default function EventList() {
           onClear={() => setEventTypeFilter('')}
         >
           <Select.Option value="">全部类型</Select.Option>
-          {Object.entries(EVENT_TYPE_LABELS).map(([key, label]) => (
-            <Select.Option key={key} value={key}>{label}</Select.Option>
+          {Object.entries(EVENT_TYPE_CONFIG).map(([key, cfg]) => (
+            <Select.Option key={key} value={key}>{cfg.label}</Select.Option>
           ))}
         </Select>
         <Select
@@ -192,16 +136,12 @@ export default function EventList() {
           onClear={() => setTimeTypeFilter('')}
         >
           <Select.Option value="">全部时间类型</Select.Option>
-          {Object.entries(TIME_TYPE_LABELS).map(([key, label]) => (
+          {Object.entries(TIME_TYPE_LABEL).map(([key, label]) => (
             <Select.Option key={key} value={key}>{label}</Select.Option>
           ))}
         </Select>
         {personNameFilter && (
-          <Tag
-            closable
-            color="blue"
-            onClose={clearPersonFilter}
-          >
+          <Tag closable color="blue" onClose={clearPersonFilter}>
             筛选：{personNameFilter}
           </Tag>
         )}
@@ -224,7 +164,7 @@ export default function EventList() {
             pageSize={store.pageSize}
             total={store.total}
             showTotal={total => `共 ${total} 条`}
-            onChange={p => setCurrentPage(p)}
+            onChange={setCurrentPage}
             showSizeChanger={false}
           />
         </div>
@@ -233,7 +173,7 @@ export default function EventList() {
       <EventFormDialog
         open={dialogOpen}
         eventId={editingEventId}
-        onClose={() => setDialogOpen(false)}
+        onClose={closeDialog}
         onSaved={fetchData}
       />
     </div>

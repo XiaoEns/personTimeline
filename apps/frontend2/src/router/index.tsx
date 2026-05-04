@@ -3,10 +3,10 @@ import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 
 const AdminLayout = lazy(() => import('@/layouts/AdminLayout'))
 const ViewerLayout = lazy(() => import('@/layouts/ViewerLayout'))
-const PersonList = lazy(() => import('@/views/admin/PersonList'))
-const EventList = lazy(() => import('@/views/admin/EventList'))
-const UploadPage = lazy(() => import('@/views/admin/UploadPage'))
-const PersonTimeline = lazy(() => import('@/views/viewer/PersonTimeline'))
+const PersonList = lazy(() => import('@/pages/admin/PersonList'))
+const EventList = lazy(() => import('@/pages/admin/EventList'))
+const UploadPage = lazy(() => import('@/pages/admin/UploadPage'))
+const PersonTimeline = lazy(() => import('@/pages/viewer/PersonTimeline'))
 
 function SuspenseWrapper() {
   return (

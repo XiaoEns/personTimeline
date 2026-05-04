@@ -1,39 +1,23 @@
-import { useEffect, useState, useCallback } from 'react'
 import { Button, Input, Select, Table, Tag, Pagination, message, Modal } from 'antd'
-import { usePersonStore } from '@/stores/person'
-import PersonFormDialog from '@/components/PersonFormDialog'
 import { useNavigate } from 'react-router-dom'
+import { usePersonList } from '@/hooks/usePersonList'
+import PersonFormDialog from '@/components/PersonFormDialog'
+
+const STATUS_OPTIONS = [
+  { value: 'draft', label: '草稿' },
+  { value: 'published', label: '已发布' },
+]
+
+const STATUS_TAG = { draft: 'warning' as const, published: 'success' as const }
 
 export default function PersonList() {
-  const store = usePersonStore()
   const navigate = useNavigate()
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editingPersonId, setEditingPersonId] = useState<string | null>(null)
-
-  const fetchList = useCallback(() => {
-    store.fetchList({
-      page: currentPage,
-      page_size: store.pageSize,
-      search: search || undefined,
-      status: (statusFilter || undefined) as 'draft' | 'published' | undefined,
-    })
-  }, [currentPage, search, statusFilter])
-
-  useEffect(() => {
-    const timer = setTimeout(fetchList, 300)
-    return () => clearTimeout(timer)
-  }, [search, statusFilter])
-
-  useEffect(() => {
-    fetchList()
-  }, [currentPage])
-
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [search, statusFilter])
+  const {
+    store, search, setSearch, statusFilter, setStatusFilter,
+    currentPage, setCurrentPage,
+    dialogOpen, editingPersonId,
+    openCreate, openEdit, closeDialog, fetchList,
+  } = usePersonList()
 
   const handleDelete = (id: string, name: string) => {
     Modal.confirm({
@@ -48,16 +32,6 @@ export default function PersonList() {
         fetchList()
       },
     })
-  }
-
-  const openCreate = () => {
-    setEditingPersonId(null)
-    setDialogOpen(true)
-  }
-
-  const openEdit = (id: string) => {
-    setEditingPersonId(id)
-    setDialogOpen(true)
   }
 
   const columns = [
@@ -81,8 +55,8 @@ export default function PersonList() {
       key: 'status',
       width: 100,
       render: (status: string) => (
-        <Tag color={status === 'published' ? 'success' : 'warning'} className="!m-0">
-          {status === 'published' ? '已发布' : '草稿'}
+        <Tag color={STATUS_TAG[status as keyof typeof STATUS_TAG] || 'default'}>
+          {STATUS_OPTIONS.find(o => o.value === status)?.label || status}
         </Tag>
       ),
     },
@@ -105,22 +79,10 @@ export default function PersonList() {
       fixed: 'right' as const,
       render: (_: unknown, row: { id: string; name: string }) => (
         <div className="flex gap-1">
-          <Button type="link" size="small" onClick={() => openEdit(row.id)}>
-            编辑
-          </Button>
-          <Button type="link" size="small" onClick={() => navigate(`/view/persons/${row.id}`)}>
-            时间轴
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            onClick={() => navigate(`/admin/events?person_id=${row.id}&person_name=${row.name}`)}
-          >
-            事件
-          </Button>
-          <Button type="link" size="small" danger onClick={() => handleDelete(row.id, row.name)}>
-            删除
-          </Button>
+          <Button type="link" size="small" onClick={() => openEdit(row.id)}>编辑</Button>
+          <Button type="link" size="small" onClick={() => navigate(`/view/persons/${row.id}`)}>时间轴</Button>
+          <Button type="link" size="small" onClick={() => navigate(`/admin/events?person_id=${row.id}&person_name=${row.name}`)}>事件</Button>
+          <Button type="link" size="small" danger onClick={() => handleDelete(row.id, row.name)}>删除</Button>
         </div>
       ),
     },
@@ -130,9 +92,7 @@ export default function PersonList() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold">人物管理</h2>
-        <Button type="primary" onClick={openCreate}>
-          + 新建人物
-        </Button>
+        <Button type="primary" onClick={openCreate}>+ 新建人物</Button>
       </div>
 
       <div className="flex items-center gap-4 mb-4">
@@ -152,8 +112,9 @@ export default function PersonList() {
           onClear={() => setStatusFilter('')}
         >
           <Select.Option value="">全部状态</Select.Option>
-          <Select.Option value="draft">草稿</Select.Option>
-          <Select.Option value="published">已发布</Select.Option>
+          {STATUS_OPTIONS.map(opt => (
+            <Select.Option key={opt.value} value={opt.value}>{opt.label}</Select.Option>
+          ))}
         </Select>
       </div>
 
@@ -174,7 +135,7 @@ export default function PersonList() {
             pageSize={store.pageSize}
             total={store.total}
             showTotal={total => `共 ${total} 条`}
-            onChange={p => setCurrentPage(p)}
+            onChange={setCurrentPage}
             showSizeChanger={false}
           />
         </div>
@@ -183,7 +144,7 @@ export default function PersonList() {
       <PersonFormDialog
         open={dialogOpen}
         personId={editingPersonId}
-        onClose={() => setDialogOpen(false)}
+        onClose={closeDialog}
         onSaved={fetchList}
       />
     </div>
