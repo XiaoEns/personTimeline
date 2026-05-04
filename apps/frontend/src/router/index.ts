@@ -22,29 +22,9 @@ const routes: RouteRecordRaw[] = [
         component: () => import('../views/admin/PersonList.vue'),
       },
       {
-        path: 'persons/new',
-        name: 'PersonCreate',
-        component: () => import('../views/admin/PersonDetail.vue'),
-      },
-      {
-        path: 'persons/:id',
-        name: 'PersonDetail',
-        component: () => import('../views/admin/PersonDetail.vue'),
-      },
-      {
         path: 'events',
         name: 'EventList',
         component: () => import('../views/admin/EventList.vue'),
-      },
-      {
-        path: 'events/new',
-        name: 'EventCreate',
-        component: () => import('../views/admin/EventDetail.vue'),
-      },
-      {
-        path: 'events/:id',
-        name: 'EventDetail',
-        component: () => import('../views/admin/EventDetail.vue'),
       },
       {
         path: 'upload',

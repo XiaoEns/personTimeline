@@ -40,7 +40,8 @@
 | 前端框架 | Vue 3 (Composition API) + Vite |
 | 状态管理 | Pinia |
 | 可视化 | D3.js (SVG) |
-| 样式 | Tailwind CSS v4 + Headless UI |
+| 样式/组件库 | Tailwind CSS v4 + Element Plus（含图标库 @element-plus/icons-vue） |
+| 组件按需加载 | unplugin-auto-import + unplugin-vue-components（Element Plus 自动按需导入） |
 | 前端路由 | Vue Router（管理端 /admin，展示端 /view） |
 | 网络请求 | Axios / fetch |
 | 包管理 | pnpm |
@@ -57,10 +58,14 @@
 
 ### 5.1 管理端（/admin）
 
-- 人物管理列表：姓名、生卒年、事件数量、状态、操作按钮
-- 人物详情/编辑页
+- 人物管理列表：姓名、生卒年、事件数量、状态 + 操作按钮（编辑/删除/时间轴/事件）
+  - **时间轴** → 跳转展示端 `/view/persons/:id`
+  - **事件** → 跳转事件列表按该人物筛选
+  - 新建/编辑人物 → 弹出框形式（ElDialog），不再跳转子页面
+  - 删除确认 → Element Plus 消息弹框（ElMessageBox）
 - 事件库：按人物、类型、时间搜索
-- 事件创建/编辑页（手动）
+  - 支持从人物列表传递 `person_id` 参数筛选
+  - 新建/编辑事件 → 弹出框形式（ElDialog），不再跳转子页面
 - 对齐工作台：待确认的事件对齐对，并排对比、一键合并/拆分
 - 上传与处理页：上传传记文件，查看处理进度
 

@@ -2,20 +2,21 @@
 import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePersonStore } from '@/stores/person'
-import type { PersonStatus } from '@person-timeline/api-types'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import PersonFormDialog from '@/components/PersonFormDialog.vue'
 
 const router = useRouter()
 const store = usePersonStore()
 
 // ========== 搜索与筛选 ==========
 const search = ref('')
-const statusFilter = ref<PersonStatus | ''>('')
+const statusFilter = ref('')
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 watch([search, statusFilter], () => {
   if (debounceTimer) clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => {
-    store.fetchList({ search: search.value || undefined, status: statusFilter.value || undefined })
+    store.fetchList({ search: search.value || undefined, status: (statusFilter.value || undefined) as import('@person-timeline/api-types').PersonStatus | undefined })
   }, 300)
 })
 
@@ -23,18 +24,45 @@ watch([search, statusFilter], () => {
 const currentPage = ref(1)
 
 watch(currentPage, (p) => {
-  store.fetchList({ page: p, search: search.value || undefined, status: statusFilter.value || undefined })
+  store.fetchList({ page: p, search: search.value || undefined, status: (statusFilter.value || undefined) as import('@person-timeline/api-types').PersonStatus | undefined })
 })
 
 function onPageChange(p: number) {
   currentPage.value = p
 }
 
+// ========== 弹出框 ==========
+const dialogVisible = ref(false)
+const editingPersonId = ref<string | null>(null)
+
+function openCreate() {
+  editingPersonId.value = null
+  dialogVisible.value = true
+}
+
+function openEdit(id: string) {
+  editingPersonId.value = id
+  dialogVisible.value = true
+}
+
+function onDialogSaved() {
+  store.fetchList({ page: currentPage.value, search: search.value || undefined, status: (statusFilter.value || undefined) as import('@person-timeline/api-types').PersonStatus | undefined })
+}
+
 // ========== 删除 ==========
 async function handleDelete(id: string, name: string) {
-  if (!window.confirm(`确定删除人物「${name}」？此操作不可撤销。`)) return
-  await store.remove(id)
-  await store.fetchList({ page: currentPage.value, search: search.value || undefined, status: statusFilter.value || undefined })
+  try {
+    await ElMessageBox.confirm(
+      `确定删除人物「${name}」？此操作不可撤销。`,
+      '确认删除',
+      { type: 'warning', confirmButtonText: '删除' }
+    )
+    await store.remove(id)
+    ElMessage.success('人物已删除')
+    await store.fetchList({ page: currentPage.value, search: search.value || undefined, status: (statusFilter.value || undefined) as import('@person-timeline/api-types').PersonStatus | undefined })
+  } catch {
+    // cancelled
+  }
 }
 
 // ========== 初始化 ==========
@@ -48,118 +76,89 @@ onMounted(() => {
     <!-- 头部 -->
     <div class="mb-6 flex items-center justify-between">
       <h2 class="text-xl font-semibold text-gray-900">人物管理</h2>
-      <button
-        class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 transition-colors"
-        @click="router.push('/admin/persons/new')"
-      >
-        + 新建人物
-      </button>
+      <el-button type="primary" @click="openCreate">+ 新建人物</el-button>
     </div>
 
     <!-- 搜索与筛选 -->
     <div class="mb-4 flex items-center gap-4">
-      <input
+      <el-input
         v-model="search"
-        type="text"
         placeholder="搜索人物姓名..."
-        class="w-72 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+        clearable
+        style="width: 280px"
       />
-      <select
-        v-model="statusFilter"
-        class="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-      >
-        <option value="">全部状态</option>
-        <option value="draft">草稿</option>
-        <option value="published">已发布</option>
-      </select>
+      <el-select v-model="statusFilter" placeholder="全部状态" clearable style="width: 140px">
+        <el-option label="全部状态" value="" />
+        <el-option label="草稿" value="draft" />
+        <el-option label="已发布" value="published" />
+      </el-select>
     </div>
 
     <!-- 表格 -->
-    <div class="overflow-hidden rounded-lg border border-gray-200 bg-white">
-      <table class="w-full text-sm">
-        <thead class="bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">
-          <tr>
-            <th class="px-4 py-3">姓名</th>
-            <th class="px-4 py-3">生卒</th>
-            <th class="px-4 py-3">状态</th>
-            <th class="px-4 py-3">事件数</th>
-            <th class="px-4 py-3">创建时间</th>
-            <th class="px-4 py-3">操作</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100">
-          <tr v-if="store.listLoading" class="animate-pulse">
-            <td v-for="i in 6" :key="i" class="px-4 py-3">
-              <div class="h-4 w-20 rounded bg-gray-200"></div>
-            </td>
-          </tr>
-          <tr v-else-if="store.list.length === 0">
-            <td colspan="6" class="px-4 py-12 text-center text-gray-400">暂无人物数据</td>
-          </tr>
-          <tr
-            v-for="person in store.list"
-            :key="person.id"
-            class="hover:bg-gray-50 transition-colors"
+    <el-table
+      :data="store.list"
+      v-loading="store.listLoading"
+      stripe
+      style="width: 100%"
+      empty-text="暂无人物数据"
+    >
+      <el-table-column prop="name" label="姓名" min-width="120">
+        <template #default="{ row }">
+          <span class="font-medium text-gray-900">{{ row.name }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="生卒" min-width="180">
+        <template #default="{ row }">
+          <span class="text-gray-500">
+            {{ row.birth_date?.slice(0, 10) || '未知' }}
+            ~
+            {{ row.death_date?.slice(0, 10) || '未知' }}
+          </span>
+        </template>
+      </el-table-column>
+      <el-table-column label="状态" width="100">
+        <template #default="{ row }">
+          <el-tag
+            :type="row.status === 'published' ? 'success' : 'warning'"
+            size="small"
           >
-            <td class="px-4 py-3 font-medium text-gray-900">{{ person.name }}</td>
-            <td class="px-4 py-3 text-gray-500">
-              {{ person.birth_date?.slice(0, 10) || '未知' }}
-              ~
-              {{ person.death_date?.slice(0, 10) || '未知' }}
-            </td>
-            <td class="px-4 py-3">
-              <span
-                class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-                :class="person.status === 'published'
-                  ? 'bg-green-50 text-green-700'
-                  : 'bg-yellow-50 text-yellow-700'"
-              >
-                {{ person.status === 'published' ? '已发布' : '草稿' }}
-              </span>
-            </td>
-            <td class="px-4 py-3 text-gray-500">{{ person.event_count }}</td>
-            <td class="px-4 py-3 text-gray-500">{{ person.created_at.slice(0, 10) }}</td>
-            <td class="px-4 py-3">
-              <div class="flex items-center gap-2">
-                <button
-                  class="text-sm text-primary-600 hover:text-primary-800"
-                  @click="router.push(`/admin/persons/${person.id}`)"
-                >
-                  编辑
-                </button>
-                <button
-                  class="text-sm text-red-500 hover:text-red-700"
-                  @click="handleDelete(person.id, person.name)"
-                >
-                  删除
-                </button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+            {{ row.status === 'published' ? '已发布' : '草稿' }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="event_count" label="事件数" width="80" />
+      <el-table-column label="创建时间" width="110">
+        <template #default="{ row }">
+          <span class="text-gray-500">{{ row.created_at.slice(0, 10) }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="220" fixed="right">
+        <template #default="{ row }">
+          <el-button link type="primary" size="small" @click="openEdit(row.id)">编辑</el-button>
+          <el-button link type="primary" size="small" @click="router.push(`/view/persons/${row.id}`)">时间轴</el-button>
+          <el-button link type="primary" size="small" @click="router.push({ path: '/admin/events', query: { person_id: row.id, person_name: row.name } })">事件</el-button>
+          <el-button link type="danger" size="small" @click="handleDelete(row.id, row.name)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
 
     <!-- 分页 -->
-    <div v-if="store.total > store.pageSize" class="mt-4 flex items-center justify-between text-sm text-gray-500">
-      <span>共 {{ store.total }} 条</span>
-      <div class="flex items-center gap-2">
-        <button
-          class="rounded border border-gray-300 px-3 py-1 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-          :disabled="currentPage <= 1"
-          @click="onPageChange(currentPage - 1)"
-        >
-          上一页
-        </button>
-        <span class="px-2">{{ currentPage }} / {{ Math.ceil(store.total / store.pageSize) }}</span>
-        <button
-          class="rounded border border-gray-300 px-3 py-1 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-          :disabled="currentPage >= Math.ceil(store.total / store.pageSize)"
-          @click="onPageChange(currentPage + 1)"
-        >
-          下一页
-        </button>
-      </div>
+    <div v-if="store.total > store.pageSize" class="mt-4 flex justify-end">
+      <el-pagination
+        v-model:current-page="currentPage"
+        :page-size="store.pageSize"
+        :total="store.total"
+        layout="total, prev, pager, next"
+        background
+        @current-change="onPageChange"
+      />
     </div>
+
+    <!-- 新建/编辑弹出框 -->
+    <PersonFormDialog
+      v-model:visible="dialogVisible"
+      :person-id="editingPersonId"
+      @saved="onDialogSaved"
+    />
   </div>
 </template>

@@ -16,5 +16,5 @@
     },
     "types": ["d3", "node"]
   },
-  "include": ["src/**/*.ts", "src/**/*.vue", "env.d.ts"]
+  "include": ["src/**/*.ts","src/**/*.vue", "env.d.ts", "auto-imports.d.ts", "components.d.ts"]
 }

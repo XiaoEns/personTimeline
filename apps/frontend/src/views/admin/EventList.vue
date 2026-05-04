@@ -1,19 +1,23 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useEventStore } from '@/stores/event'
-import type { EventType, TimeType } from '@person-timeline/api-types'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import EventFormDialog from '@/components/EventFormDialog.vue'
 
+const route = useRoute()
 const router = useRouter()
 const store = useEventStore()
 
 // ========== 筛选 ==========
 const search = ref('')
-const eventTypeFilter = ref<EventType | ''>('')
-const timeTypeFilter = ref<TimeType | ''>('')
+const eventTypeFilter = ref('')
+const timeTypeFilter = ref('')
+const personIdFilter = ref<string | undefined>(undefined)
+const personNameFilter = ref<string | undefined>(undefined)
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
-const EVENT_TYPE_LABELS: Record<EventType, string> = {
+const EVENT_TYPE_LABELS: Record<string, string> = {
   BIRTH: '出生',
   DEATH: '死亡',
   EDUCATION: '教育',
@@ -23,17 +27,17 @@ const EVENT_TYPE_LABELS: Record<EventType, string> = {
   OTHER: '其他',
 }
 
-const EVENT_TYPE_COLORS: Record<EventType, string> = {
-  BIRTH: 'bg-pink-50 text-pink-700',
-  DEATH: 'bg-gray-100 text-gray-700',
-  EDUCATION: 'bg-blue-50 text-blue-700',
-  CAREER: 'bg-amber-50 text-amber-700',
-  CREATION: 'bg-purple-50 text-purple-700',
-  HISTORICAL: 'bg-cyan-50 text-cyan-700',
-  OTHER: 'bg-slate-50 text-slate-700',
+const EVENT_TYPE_TYPES: Record<string, 'success' | 'danger' | 'primary' | 'warning' | 'info'> = {
+  BIRTH: 'success',
+  DEATH: 'danger',
+  EDUCATION: 'primary',
+  CAREER: 'warning',
+  CREATION: 'primary',
+  HISTORICAL: 'info',
+  OTHER: 'info',
 }
 
-const TIME_TYPE_LABELS: Record<TimeType, string> = {
+const TIME_TYPE_LABELS: Record<string, string> = {
   POINT: '时间点',
   PERIOD: '时间段',
   FUZZY: '模糊',
@@ -54,8 +58,9 @@ function fetchData() {
   store.fetchList({
     page: currentPage.value,
     search: search.value || undefined,
-    event_type: eventTypeFilter.value || undefined,
-    time_type: timeTypeFilter.value || undefined,
+    event_type: (eventTypeFilter.value || undefined) as import('@person-timeline/api-types').EventType | undefined,
+    time_type: (timeTypeFilter.value || undefined) as import('@person-timeline/api-types').TimeType | undefined,
+    person_id: personIdFilter.value,
   })
 }
 
@@ -64,15 +69,57 @@ function onPageChange(p: number) {
   fetchData()
 }
 
+// ========== 人物筛选 ==========
+function clearPersonFilter() {
+  personIdFilter.value = undefined
+  personNameFilter.value = undefined
+  currentPage.value = 1
+  fetchData()
+  router.replace({ query: {} })
+}
+
+// ========== 弹出框 ==========
+const dialogVisible = ref(false)
+const editingEventId = ref<string | null>(null)
+
+function openCreate() {
+  editingEventId.value = null
+  dialogVisible.value = true
+}
+
+function openEdit(id: string) {
+  editingEventId.value = id
+  dialogVisible.value = true
+}
+
+function onDialogSaved() {
+  fetchData()
+}
+
 // ========== 删除 ==========
 async function handleDelete(id: string, title: string) {
-  if (!window.confirm(`确定删除事件「${title}」？此操作不可撤销。`)) return
-  await store.remove(id)
-  fetchData()
+  try {
+    await ElMessageBox.confirm(
+      `确定删除事件「${title}」？此操作不可撤销。`,
+      '确认删除',
+      { type: 'warning', confirmButtonText: '删除' }
+    )
+    await store.remove(id)
+    ElMessage.success('事件已删除')
+    fetchData()
+  } catch {
+    // cancelled
+  }
 }
 
 // ========== 初始化 ==========
 onMounted(() => {
+  const pid = route.query.person_id as string | undefined
+  const pname = route.query.person_name as string | undefined
+  if (pid) {
+    personIdFilter.value = pid
+    personNameFilter.value = pname
+  }
   fetchData()
 })
 </script>
@@ -82,127 +129,98 @@ onMounted(() => {
     <!-- 头部 -->
     <div class="mb-6 flex items-center justify-between">
       <h2 class="text-xl font-semibold text-gray-900">事件管理</h2>
-      <button
-        class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 transition-colors"
-        @click="router.push('/admin/events/new')"
-      >
-        + 新建事件
-      </button>
+      <el-button type="primary" @click="openCreate">+ 新建事件</el-button>
     </div>
 
     <!-- 筛选 -->
     <div class="mb-4 flex items-center gap-4">
-      <input
+      <el-input
         v-model="search"
-        type="text"
         placeholder="搜索事件标题..."
-        class="w-72 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+        clearable
+        style="width: 280px"
       />
-      <select
-        v-model="eventTypeFilter"
-        class="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+      <el-select v-model="eventTypeFilter" placeholder="全部类型" clearable style="width: 140px">
+        <el-option label="全部类型" value="" />
+        <el-option v-for="(label, key) in EVENT_TYPE_LABELS" :key="key" :label="label" :value="key" />
+      </el-select>
+      <el-select v-model="timeTypeFilter" placeholder="全部时间类型" clearable style="width: 150px">
+        <el-option label="全部时间类型" value="" />
+        <el-option v-for="(label, key) in TIME_TYPE_LABELS" :key="key" :label="label" :value="key" />
+      </el-select>
+      <el-tag
+        v-if="personNameFilter"
+        closable
+        type="primary"
+        @close="clearPersonFilter"
       >
-        <option value="">全部类型</option>
-        <option v-for="(label, key) in EVENT_TYPE_LABELS" :key="key" :value="key">{{ label }}</option>
-      </select>
-      <select
-        v-model="timeTypeFilter"
-        class="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-      >
-        <option value="">全部时间类型</option>
-        <option v-for="(label, key) in TIME_TYPE_LABELS" :key="key" :value="key">{{ label }}</option>
-      </select>
+        筛选：{{ personNameFilter }}
+      </el-tag>
     </div>
 
     <!-- 表格 -->
-    <div class="overflow-hidden rounded-lg border border-gray-200 bg-white">
-      <table class="w-full text-sm">
-        <thead class="bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">
-          <tr>
-            <th class="px-4 py-3">事件标题</th>
-            <th class="px-4 py-3">类型</th>
-            <th class="px-4 py-3">时间</th>
-            <th class="px-4 py-3">关联人物</th>
-            <th class="px-4 py-3">排序日期</th>
-            <th class="px-4 py-3">操作</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100">
-          <tr v-if="store.listLoading" class="animate-pulse">
-            <td v-for="i in 6" :key="i" class="px-4 py-3">
-              <div class="h-4 w-20 rounded bg-gray-200"></div>
-            </td>
-          </tr>
-          <tr v-else-if="store.list.length === 0">
-            <td colspan="6" class="px-4 py-12 text-center text-gray-400">暂无事件数据</td>
-          </tr>
-          <tr
-            v-for="event in store.list"
-            :key="event.id"
-            class="hover:bg-gray-50 transition-colors"
-          >
-            <td class="px-4 py-3 font-medium text-gray-900">{{ event.title }}</td>
-            <td class="px-4 py-3">
-              <span
-                class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-                :class="EVENT_TYPE_COLORS[event.event_type]"
-              >
-                {{ EVENT_TYPE_LABELS[event.event_type] }}
-              </span>
-            </td>
-            <td class="px-4 py-3 text-gray-500">
-              <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium">
-                {{ TIME_TYPE_LABELS[event.time_type] }}
-              </span>
-            </td>
-            <td class="px-4 py-3 text-gray-500">
-              <span v-for="p in event.persons" :key="p.id" class="mr-1 inline-block">
-                {{ p.name }}
-              </span>
-              <span v-if="event.persons.length === 0" class="text-gray-300">-</span>
-            </td>
-            <td class="px-4 py-3 text-gray-500">{{ event.sort_date?.slice(0, 10) }}</td>
-            <td class="px-4 py-3">
-              <div class="flex items-center gap-2">
-                <button
-                  class="text-sm text-primary-600 hover:text-primary-800"
-                  @click="router.push(`/admin/events/${event.id}`)"
-                >
-                  编辑
-                </button>
-                <button
-                  class="text-sm text-red-500 hover:text-red-700"
-                  @click="handleDelete(event.id, event.title)"
-                >
-                  删除
-                </button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <el-table
+      :data="store.list"
+      v-loading="store.listLoading"
+      stripe
+      style="width: 100%"
+      empty-text="暂无事件数据"
+    >
+      <el-table-column prop="title" label="事件标题" min-width="160">
+        <template #default="{ row }">
+          <span class="font-medium text-gray-900">{{ row.title }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="类型" width="90">
+        <template #default="{ row }">
+          <el-tag :type="EVENT_TYPE_TYPES[row.event_type]" size="small">
+            {{ EVENT_TYPE_LABELS[row.event_type] }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="时间" width="100">
+        <template #default="{ row }">
+          <el-tag size="small" effect="plain">
+            {{ TIME_TYPE_LABELS[row.time_type] }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="关联人物" min-width="140">
+        <template #default="{ row }">
+          <span v-for="p in row.persons" :key="p.id" class="mr-1 inline-block text-gray-500">{{ p.name }}</span>
+          <span v-if="row.persons.length === 0" class="text-gray-300">-</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="排序日期" width="110">
+        <template #default="{ row }">
+          <span class="text-gray-500">{{ row.sort_date?.slice(0, 10) }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="140" fixed="right">
+        <template #default="{ row }">
+          <el-button link type="primary" size="small" @click="openEdit(row.id)">编辑</el-button>
+          <el-button link type="danger" size="small" @click="handleDelete(row.id, row.title)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
 
     <!-- 分页 -->
-    <div v-if="store.total > store.pageSize" class="mt-4 flex items-center justify-between text-sm text-gray-500">
-      <span>共 {{ store.total }} 条</span>
-      <div class="flex items-center gap-2">
-        <button
-          class="rounded border border-gray-300 px-3 py-1 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-          :disabled="currentPage <= 1"
-          @click="onPageChange(currentPage - 1)"
-        >
-          上一页
-        </button>
-        <span class="px-2">{{ currentPage }} / {{ Math.ceil(store.total / store.pageSize) }}</span>
-        <button
-          class="rounded border border-gray-300 px-3 py-1 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-          :disabled="currentPage >= Math.ceil(store.total / store.pageSize)"
-          @click="onPageChange(currentPage + 1)"
-        >
-          下一页
-        </button>
-      </div>
+    <div v-if="store.total > store.pageSize" class="mt-4 flex justify-end">
+      <el-pagination
+        v-model:current-page="currentPage"
+        :page-size="store.pageSize"
+        :total="store.total"
+        layout="total, prev, pager, next"
+        background
+        @current-change="onPageChange"
+      />
     </div>
+
+    <!-- 新建/编辑弹出框 -->
+    <EventFormDialog
+      v-model:visible="dialogVisible"
+      :event-id="editingEventId"
+      @saved="onDialogSaved"
+    />
   </div>
 </template>

@@ -164,3 +164,27 @@ Task 1 (前置)
 
 前后端 Task 4-9 与 Task 13-16 可并行开发
 ```
+
+---
+
+## 时间轴展示修复任务
+
+### Task 17: PERIOD 事件在主时间轴以线段展示
+- **文件**: `apps/frontend/src/components/Timeline.vue`
+- **描述**: PERIOD 事件在主时间轴上以横线段展示，两端带端点圆点，区别于 POINT 的实心圆。线段跨度从 start_date 到 end_date
+- **验收**: PERIOD 事件在单条时间线上显示为彩色线段，两端有端点，悬停显示浮层，可点击查看详情
+
+### Task 18: FUZZY 事件改为右侧卡片展示
+- **文件**: `apps/frontend/src/components/Timeline.vue`
+- **描述**: 将 FUZZY 事件从主时间轴中移除，改为在右侧以卡片列表形式单独展示。卡片显示事件标题、时间范围、类型标签，点击可查看详情
+- **验收**: FUZZY 事件不出现在泳道中，在右侧以卡片列表展示
+
+### Task 19: 出生/逝世特殊图标
+- **文件**: `apps/frontend/src/components/Timeline.vue`
+- **描述**: 在时间轴两端用特殊图标标记 BIRTH 和 DEATH 事件（如：🎂/⚰️ 或特定 SVG 图标），替代默认的圆点
+- **验收**: 时间轴两端出生/逝世事件使用特殊图标而非普通圆点
+
+### Task 20: 修复年份前置零
+- **文件**: `apps/frontend/src/components/Timeline.vue`
+- **描述**: X 轴刻度格式 `d3.timeFormat('%Y')` 对公元 1000 年以前的年份会输出前置零（如 0234），需自定义格式化函数去掉前置零
+- **验收**: 公元 234 年显示为 "234"，公元 0 年显示为 "0"
