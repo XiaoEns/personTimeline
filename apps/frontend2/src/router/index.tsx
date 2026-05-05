@@ -7,6 +7,7 @@ const PersonList = lazy(() => import('@/pages/admin/PersonList'))
 const EventList = lazy(() => import('@/pages/admin/EventList'))
 const UploadPage = lazy(() => import('@/pages/admin/UploadPage'))
 const PersonTimeline = lazy(() => import('@/pages/viewer/PersonTimeline'))
+const PersonGitTree = lazy(() => import('@/pages/viewer/PersonGitTree'))
 
 function SuspenseWrapper() {
   return (
@@ -45,6 +46,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <Navigate to="/admin" replace /> },
           { path: 'persons/:id', element: <PersonTimeline /> },
+          { path: 'persons/:id/git-tree', element: <PersonGitTree /> },
         ],
       },
     ],

@@ -75,12 +75,13 @@ export default function PersonList() {
     {
       title: '操作',
       key: 'actions',
-      width: 220,
+      width: 260,
       fixed: 'right' as const,
       render: (_: unknown, row: { id: string; name: string }) => (
         <div className="flex gap-1">
           <Button type="link" size="small" onClick={() => openEdit(row.id)}>编辑</Button>
           <Button type="link" size="small" onClick={() => navigate(`/view/persons/${row.id}`)}>时间轴</Button>
+          <Button type="link" size="small" onClick={() => navigate(`/view/persons/${row.id}/git-tree`)}>Git树</Button>
           <Button type="link" size="small" onClick={() => navigate(`/admin/events?person_id=${row.id}&person_name=${row.name}`)}>事件</Button>
           <Button type="link" size="small" danger onClick={() => handleDelete(row.id, row.name)}>删除</Button>
         </div>

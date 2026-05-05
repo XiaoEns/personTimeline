@@ -8,7 +8,7 @@ export default function ViewerLayout() {
           &larr; 返回管理
         </Link>
       </header>
-      <main className="flex-1">
+      <main className="flex-1 min-h-0 flex flex-col">
         <Outlet />
       </main>
     </div>
