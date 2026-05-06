@@ -201,6 +201,10 @@ export interface PersonEventItem {
   end_date: string;
   time_type: TimeType;
   event_type: EventType;
+  /** 参与该事件的人物名称列表 */
+  persons: string[];
+  /** 参与该事件的人物 ID 列表（与 persons 一一对应） */
+  person_ids: string[];
 }
 
 export interface PersonEventList {

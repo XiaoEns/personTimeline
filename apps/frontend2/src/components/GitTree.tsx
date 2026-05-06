@@ -15,86 +15,96 @@ type PersonGitEntry = GitLogEntry<PersonEventExtra>
 interface GitTreeProps {
   person: PersonDetail
   events: PersonEventItem[]
-  otherBranches?: { personName: string; events: PersonEventItem[] }[]
+  /** 显式指定分支名列表及列顺序（第一个为主分支）。未传则从 events[].persons 自动推导 */
+  activeBranchNames?: string[]
   onSelectEvent?: (eventId: string) => void
 }
-
-// ========== 分支色板 ==========
-// const BRANCH_COLORS = [
-//   '#5b8ff9', // 蓝
-//   '#5ad8a6', // 青绿
-//   '#f6bd16', // 金
-//   '#e86452', // 红
-//   '#6dc8ec', // 天蓝
-//   '#945fb4', // 紫
-//   '#ff9845', // 橙
-//   '#1e9493', // 深青
-// ]
 
 /**
  * 将人物事件列表映射为 GitLog 所需条目格式。
  *
  * 核心逻辑：
- * 1. 收集所有人物的事件，按 event_id 去重——相同 event_id = 共享事件
- * 2. 按时间升序构建 git DAG：共享事件 → 合并节点（多 parents），单人事件 → 普通节点
- * 3. 反转为降序输出，符合 git log 从新到旧的渲染顺序
- *
- * 共享事件放置在 currentBranch 上，其他人物分支在共享点汇入、再在后续事件处分叉。
+ * 1. 按 start_date 升序排列事件
+ * 2. 若传入 activeBranchNames 则直接使用，否则从 events[].persons 自动推导
+ * 3. 插入 __start__/__end__ 哨兵节点作为图的起止边界
+ * 4. 构建 git DAG：persons.length > 1 → 合并节点，否则 → 普通 commit
+ * 5. __end__ 只放在主分支（分支列表第一项）上
  */
 function mapEventsToGitLog(
   person: PersonDetail,
   events: PersonEventItem[],
-  otherBranches?: { personName: string; events: PersonEventItem[] }[],
+  activeBranchNames?: string[],
 ): { entries: PersonGitEntry[]; currentBranch: string } {
-  // ---- 1. 收集所有事件，按 event_id 分组 ----
-  const eventMap = new Map<string, {
-    event: PersonEventItem
-    persons: { name: string; role: string | null; personalTitle: string | null }[]
-  }>()
+  if (events.length === 0) {
+    return { entries: [], currentBranch: person.name }
+  }
 
-  const allBranches: { name: string; events: PersonEventItem[] }[] = [
-    { name: person.name, events },
-    ...(otherBranches || []).map(b => ({ name: b.personName, events: b.events })),
-  ]
-
-  allBranches.forEach(({ name: branchName, events: evts }) => {
-    evts.forEach(evt => {
-      const existing = eventMap.get(evt.event_id)
-      if (existing) {
-        existing.persons.push({ name: branchName, role: evt.role, personalTitle: evt.personal_title })
-      } else {
-        eventMap.set(evt.event_id, {
-          event: evt,
-          persons: [{ name: branchName, role: evt.role, personalTitle: evt.personal_title }],
-        })
-      }
-    })
-  })
-
-  // ---- 2. 按时间升序排列（用于构建 parent 关系） ----
-  const sortedEvents = Array.from(eventMap.values()).sort((a, b) => {
-    const da = new Date(a.event.start_date).getTime()
-    const db = new Date(b.event.start_date).getTime()
+  // ---- 1. 按 start_date 升序排列 ----
+  const sortedEvents = [...events].sort((a, b) => {
+    const da = new Date(a.start_date).getTime()
+    const db = new Date(b.start_date).getTime()
     if (da !== db) return da - db
-    return a.event.sort_order - b.event.sort_order
+    return a.sort_order - b.sort_order
   })
 
-  // ---- 3. 按时间升序遍历，构建 git DAG ----
+  // ---- 2. 推导分支列表 ----
+  // 若上层传入了 activeBranchNames，直接使用；否则从 events[].persons 自动收集
+  let branchNames: string[]
+  if (activeBranchNames && activeBranchNames.length > 0) {
+    branchNames = activeBranchNames
+  } else {
+    const branchPersonSet = new Set<string>()
+    sortedEvents.forEach(evt => {
+      (evt.persons || []).forEach(p => branchPersonSet.add(p))
+    })
+    branchPersonSet.delete(person.name)
+    branchNames = [person.name]
+    Array.from(branchPersonSet).sort().forEach(p => branchNames.push(p))
+  }
+
+  // ---- 3. 计算哨兵日期（首尾各延展 1 天） ----
+  const firstDate = new Date(sortedEvents[0].start_date)
+  const lastDate = new Date(sortedEvents[sortedEvents.length - 1].start_date)
+  const startDate = new Date(firstDate.getTime() - 86400000)
+  const endDate = new Date(lastDate.getTime() + 86400000)
+
+  /** 将 Date 格式化为 "YYYY-MM-DD HH:MM:SS" 字符串 */
+  function formatDate(d: Date): string {
+    const yyyy = d.getFullYear()
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    return `${yyyy}-${mm}-${dd} 00:00:00`
+  }
+
+  // ---- 4. 升序遍历构建 git DAG ----
   const entries: PersonGitEntry[] = []
   const lastHash = new Map<string, string>() // branchName → 该分支最新 commit hash
 
-  sortedEvents.forEach(({ event: evt, persons }) => {
-    const year = evt.start_date?.slice(0, 4) || ''
-    const branchNames = persons.map(p => p.name)
+  // 4a. __start__ 哨兵 —— 所有有效分支的公共根节点
+  entries.push({
+    hash: '__start__',
+    branch: person.name,
+    parents: [],
+    message: '起始',
+    committerDate: formatDate(startDate),
+    author: { name: person.name },
+    role: null,
+    eventType: 'OTHER',
+  })
+  branchNames.forEach(name => lastHash.set(name, '__start__'))
 
-    if (persons.length === 1) {
+  // 4b. 遍历所有事件
+  sortedEvents.forEach(evt => {
+    const year = evt.start_date?.slice(0, 4) || ''
+    const persons = evt.persons || []
+
+    if (persons.length <= 1) {
       // 单人事件 —— 普通 commit
-      const branchName = persons[0].name
-      const hash = `${branchName}:${evt.event_id}`
+      const branchName = persons.length === 1 ? persons[0] : person.name
       const parentHash = lastHash.get(branchName)
 
       entries.push({
-        hash,
+        hash: evt.event_id,
         branch: branchName,
         parents: parentHash ? [parentHash] : [],
         message: `${evt.personal_title || evt.title}（${year}年）`,
@@ -104,49 +114,56 @@ function mapEventsToGitLog(
         eventType: evt.event_type,
       })
 
-      lastHash.set(branchName, hash)
+      lastHash.set(branchName, evt.event_id)
     } else {
-      // 共享事件 —— 合并 commit（多 parents）
-      const parentHashes = new Set<string>()
-      branchNames.forEach(name => {
+      // 多人事件 —— 合并 commit（多 parents）
+      const parentHashes: string[] = []
+      persons.forEach(name => {
         const h = lastHash.get(name)
-        if (h) parentHashes.add(h)
+        if (h && !parentHashes.includes(h)) {
+          parentHashes.push(h)
+        }
       })
 
-      // 优先放在当前人物分支上，否则取第一个参与人物
-      const primaryBranch = branchNames.includes(person.name) ? person.name : branchNames[0]
+      // 优先放在当前人物分支上
+      const primaryBranch = persons.includes(person.name) ? person.name : persons[0]
 
-      // 参与者角色描述
-      const rolesDesc = persons
-        .map(p => `${p.name}${p.role ? `:${p.role}` : ''}`)
-        .join('、')
-
-      const hash = evt.event_id
-
-      // 当前人物的个人视角标题（若参与）
-      const selfPerson = persons.find(p => p.name === person.name)
-      const displayTitle = selfPerson?.personalTitle || evt.title
+      // 参与者描述
+      const rolesDesc = persons.join('、')
 
       entries.push({
-        hash,
+        hash: evt.event_id,
         branch: primaryBranch,
-        parents: Array.from(parentHashes),
-        message: `${displayTitle}（${year}年）— ${rolesDesc}`,
+        parents: parentHashes,
+        message: `${evt.personal_title || evt.title}（${year}年）— ${rolesDesc}`,
         committerDate: evt.start_date,
         author: { name: primaryBranch },
-        role: selfPerson?.role || persons[0].role,
+        role: evt.role,
         eventType: evt.event_type,
       })
 
-      // 所有参与分支的 lastHash 都指向此共享 commit
-      branchNames.forEach(name => {
-        lastHash.set(name, hash)
+      // 所有参与分支的 lastHash 都更新为此事件
+      persons.forEach(name => {
+        lastHash.set(name, evt.event_id)
       })
     }
   })
 
-  // ---- 4. 反转为降序（git log 从新到旧） ----
-  entries.reverse()
+  // 4c. __end__ 哨兵 —— 只放在当前人物分支上
+  const currentLastHash = lastHash.get(person.name)
+  entries.push({
+    hash: '__end__',
+    branch: person.name,
+    parents: currentLastHash ? [currentLastHash] : [],
+    message: '结束',
+    committerDate: formatDate(endDate),
+    author: { name: person.name },
+    role: null,
+    eventType: 'OTHER',
+  })
+
+  // ---- 5. 反转为降序（git log 从新到旧） ----
+  // entries.reverse()
 
   return { entries, currentBranch: person.name }
 }
@@ -155,18 +172,23 @@ function mapEventsToGitLog(
  * 以 Git 分支图形式展示人物时间线。
  * 人物 = 分支，事件 = commit。
  */
-export default function GitTree({ person, events, otherBranches, onSelectEvent }: GitTreeProps) {
+export default function GitTree({ person, events, activeBranchNames, onSelectEvent }: GitTreeProps) {
   const { entries, currentBranch } = useMemo(
-    () => mapEventsToGitLog(person, events, otherBranches),
-    [person, events, otherBranches],
+    () => mapEventsToGitLog(person, events, activeBranchNames),
+    [person, events, activeBranchNames],
   )
 
+  /**
+   * 处理 commit 选中事件。
+   * hash 即 event_id，哨兵节点（__start__/__end__）不触发回调。
+   */
   const handleSelectCommit = useCallback(
     (commit?: { hash: string }) => {
       if (commit && onSelectEvent) {
-        // hash 格式：「分支名:事件ID」（单人事件）或「事件ID」（共享事件）
-        const eventId = commit.hash.includes(':') ? commit.hash.split(':')[1] : commit.hash
-        onSelectEvent(eventId)
+        const { hash } = commit
+        if (hash !== '__start__' && hash !== '__end__') {
+          onSelectEvent(hash)
+        }
       }
     },
     [onSelectEvent],
