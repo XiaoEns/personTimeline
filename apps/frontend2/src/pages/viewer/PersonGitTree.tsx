@@ -108,6 +108,11 @@ export default function PersonGitTree() {
     // 不可移除初始人物
     if (activePersonIds[0] === personId) return
     setActivePersonIds(prev => prev.filter(pid => pid !== personId))
+    setPersonCache(prev => {
+      const next = new Map(prev)
+      next.delete(personId)
+      return next
+    })
   }, [activePersonIds])
 
   // ---- 事件选中 ----
@@ -120,9 +125,6 @@ export default function PersonGitTree() {
   }, [eventMap])
 
   const closeEventCard = useCallback(() => setShowEventCard(false), [])
-
-  // ---- 分支颜色映射 ----
-  const branchColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16']
 
   if (loading) {
     return (
@@ -177,7 +179,6 @@ export default function PersonGitTree() {
               <span
                 key={pid}
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-white border"
-                style={{ borderLeft: `3px solid ${branchColors[idx % branchColors.length]}` }}
               >
                 {name}
                 {isLoading && (

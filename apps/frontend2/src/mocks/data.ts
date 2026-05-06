@@ -504,10 +504,10 @@ export const MOCK_PERSON_EVENTS: Record<string, any[]> = {
     { id: UUIDS.PE_ZGL_DEATH, event_id: UUIDS.EVT_ZGL_DEATH, title: '诸葛亮逝世', personal_title: null, role: null, sort_order: 12, start_date: '234-10-08 00:00:00', end_date: '234-10-08 00:00:00', time_type: 'POINT', event_type: 'DEATH', persons: ['诸葛亮'], person_ids: [UUIDS.ZGL] },
   ],
   [UUIDS.CC]: [
-    { id: UUIDS.PE_CC_BIRTH, event_id: UUIDS.EVT_CC_BIRTH, title: '曹操出生', personal_title: null, role: null, sort_order: 0, start_date: '155-01-01 00:00:00', end_date: '155-01-01 00:00:00', time_type: 'POINT', event_type: 'BIRTH' },
-    { id: UUIDS.PE_CC_GZDZ, event_id: UUIDS.EVT_GZDZ, title: '官渡之战', personal_title: null, role: '统帅', sort_order: 1, start_date: '200-08-01 00:00:00', end_date: '200-10-01 00:00:00', time_type: 'PERIOD', event_type: 'HISTORICAL' },
-    { id: UUIDS.PE_CC_CBZZ, event_id: UUIDS.EVT_CBZZ, title: '赤壁之战', personal_title: '赤壁大败', role: '统帅', sort_order: 2, start_date: '208-10-01 00:00:00', end_date: '208-11-01 00:00:00', time_type: 'PERIOD', event_type: 'HISTORICAL' },
-    { id: UUIDS.PE_CC_CCDTH, event_id: UUIDS.EVT_CCDTH, title: '曹操病逝', personal_title: null, role: '主角', sort_order: 3, start_date: '220-03-15 00:00:00', end_date: '220-03-15 00:00:00', time_type: 'POINT', event_type: 'DEATH' },
+    { id: UUIDS.PE_CC_BIRTH, event_id: UUIDS.EVT_CC_BIRTH, title: '曹操出生', personal_title: null, role: null, sort_order: 0, start_date: '155-01-01 00:00:00', end_date: '155-01-01 00:00:00', time_type: 'POINT', event_type: 'BIRTH', persons: ['曹操'], person_ids: [UUIDS.CC] },
+    { id: UUIDS.PE_CC_GZDZ, event_id: UUIDS.EVT_GZDZ, title: '官渡之战', personal_title: null, role: '统帅', sort_order: 1, start_date: '200-08-01 00:00:00', end_date: '200-10-01 00:00:00', time_type: 'PERIOD', event_type: 'HISTORICAL', persons: ['曹操'], person_ids: [UUIDS.CC] },
+    { id: UUIDS.PE_CC_CBZZ, event_id: UUIDS.EVT_CBZZ, title: '赤壁之战', personal_title: '赤壁大败', role: '统帅', sort_order: 2, start_date: '208-10-01 00:00:00', end_date: '208-11-01 00:00:00', time_type: 'PERIOD', event_type: 'HISTORICAL', persons: ['诸葛亮', '刘备', '曹操'], person_ids: [UUIDS.ZGL, UUIDS.LB, UUIDS.CC] },
+    { id: UUIDS.PE_CC_CCDTH, event_id: UUIDS.EVT_CCDTH, title: '曹操病逝', personal_title: null, role: '主角', sort_order: 3, start_date: '220-03-15 00:00:00', end_date: '220-03-15 00:00:00', time_type: 'POINT', event_type: 'DEATH', persons: ['曹操'], person_ids: [UUIDS.CC] },
   ],
   [UUIDS.LB]: [
     { id: UUIDS.PE_LB_BIRTH, event_id: UUIDS.EVT_LBBIRTH, title: '刘备出生', personal_title: null, role: null, sort_order: 0, start_date: '161-01-01 00:00:00', end_date: '161-01-01 00:00:00', time_type: 'POINT', event_type: 'BIRTH', persons: ['刘备'], person_ids: [UUIDS.LB] },

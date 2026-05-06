@@ -26,9 +26,9 @@ interface GitTreeProps {
  * 核心逻辑：
  * 1. 按 start_date 升序排列事件
  * 2. 若传入 activeBranchNames 则直接使用，否则从 events[].persons 自动推导
- * 3. 插入 __start__/__end__ 哨兵节点作为图的起止边界
+ * 3. 每个分支的第一个事件作为独立根 commit（parents: []），确保主分支占据第一列
  * 4. 构建 git DAG：persons.length > 1 → 合并节点，否则 → 普通 commit
- * 5. __end__ 只放在主分支（分支列表第一项）上
+ * 5. __end__ 哨兵只放在主分支上
  */
 function mapEventsToGitLog(
   person: PersonDetail,
@@ -62,10 +62,8 @@ function mapEventsToGitLog(
     Array.from(branchPersonSet).sort().forEach(p => branchNames.push(p))
   }
 
-  // ---- 3. 计算哨兵日期（首尾各延展 1 天） ----
-  const firstDate = new Date(sortedEvents[0].start_date)
+  // ---- 3. 计算 __end__ 哨兵日期（末事件延展 1 天） ----
   const lastDate = new Date(sortedEvents[sortedEvents.length - 1].start_date)
-  const startDate = new Date(firstDate.getTime() - 86400000)
   const endDate = new Date(lastDate.getTime() + 86400000)
 
   /** 将 Date 格式化为 "YYYY-MM-DD HH:MM:SS" 字符串 */
@@ -77,23 +75,10 @@ function mapEventsToGitLog(
   }
 
   // ---- 4. 升序遍历构建 git DAG ----
+  // 不为 lastHash 做预热——每个分支的首个事件将作为根 commit（parents: []）
   const entries: PersonGitEntry[] = []
-  const lastHash = new Map<string, string>() // branchName → 该分支最新 commit hash
+  const lastHash = new Map<string, string>()
 
-  // 4a. __start__ 哨兵 —— 所有有效分支的公共根节点
-  entries.push({
-    hash: '__start__',
-    branch: person.name,
-    parents: [],
-    message: '起始',
-    committerDate: formatDate(startDate),
-    author: { name: person.name },
-    role: null,
-    eventType: 'OTHER',
-  })
-  branchNames.forEach(name => lastHash.set(name, '__start__'))
-
-  // 4b. 遍历所有事件
   sortedEvents.forEach(evt => {
     const year = evt.start_date?.slice(0, 4) || ''
     const persons = evt.persons || []
@@ -149,21 +134,18 @@ function mapEventsToGitLog(
     }
   })
 
-  // 4c. __end__ 哨兵 —— 只放在当前人物分支上
-  const currentLastHash = lastHash.get(person.name)
+  // ---- 5. __end__ 哨兵 —— 只放在主分支上 ----
+  const primaryLastHash = lastHash.get(branchNames[0])
   entries.push({
     hash: '__end__',
-    branch: person.name,
-    parents: currentLastHash ? [currentLastHash] : [],
+    branch: branchNames[0],
+    parents: primaryLastHash ? [primaryLastHash] : [],
     message: '结束',
     committerDate: formatDate(endDate),
     author: { name: person.name },
     role: null,
     eventType: 'OTHER',
   })
-
-  // ---- 5. 反转为降序（git log 从新到旧） ----
-  // entries.reverse()
 
   return { entries, currentBranch: person.name }
 }
@@ -180,7 +162,7 @@ export default function GitTree({ person, events, activeBranchNames, onSelectEve
 
   /**
    * 处理 commit 选中事件。
-   * hash 即 event_id，哨兵节点（__start__/__end__）不触发回调。
+   * hash 即 event_id，哨兵节点（__end__）不触发回调。
    */
   const handleSelectCommit = useCallback(
     (commit?: { hash: string }) => {
