@@ -38,3 +38,5 @@ dist/
 
 # 本地配置
 CLAUDE.local.md
+
+tmp/

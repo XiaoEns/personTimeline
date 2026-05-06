@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from 'react'
-import { GitLog } from '@tomplum/react-git-log'
-import type { GitLogEntry } from '@tomplum/react-git-log'
+import { GitLog } from '@/vendor/react-git-log'
+import type { GitLogEntry } from '@/vendor/react-git-log'
 import type { PersonDetail, PersonEventItem } from '@person-timeline/api-types'
 
 // ========== 扩展条目类型 ==========

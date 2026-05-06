@@ -7,12 +7,20 @@
     "skipLibCheck": true,
     "strict": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "modules/*": ["./src/vendor/react-git-log/modules/*"],
+      "components/*": ["./src/vendor/react-git-log/components/*"],
+      "context/*": ["./src/vendor/react-git-log/context/*"],
+      "hooks/*": ["./src/vendor/react-git-log/hooks/*"],
+      "constants/*": ["./src/vendor/react-git-log/constants/*"],
+      "types/*": ["./src/vendor/react-git-log/types/*"],
+      "assets/*": ["./src/vendor/react-git-log/assets/*"],
+      "data": ["./src/vendor/react-git-log/data/index.ts"]
     },
 
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true,
+    "verbatimModuleSyntax": false,
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
