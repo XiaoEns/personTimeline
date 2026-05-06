@@ -45,6 +45,10 @@ export const LeftDownCurve = ({ color, isPlaceholder, showBottomBreakPoint }: Le
         dashed={isPlaceholder}
         id='left-down-curve-curved-line'
         path='M 0,53 A 50,50 0 0,1 50,100'
+        style={{
+          top: (ROW_HEIGHT + rowSpacing - CURVE_SIZE) / 2,
+          left: `calc(50% - ${CURVE_SIZE / 2}px)`,
+        }}
       />
 
       <div

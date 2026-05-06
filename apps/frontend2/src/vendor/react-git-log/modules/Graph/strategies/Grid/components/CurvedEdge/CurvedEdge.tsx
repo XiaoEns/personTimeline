@@ -2,7 +2,7 @@ import styles from './CurvedEdge.module.scss'
 import { CurvedEdgeProps } from './types'
 import { CURVE_SIZE } from 'constants/constants'
 
-export const CurvedEdge = ({ id, colour, path, dashed }: CurvedEdgeProps) => {
+export const CurvedEdge = ({ id, colour, path, dashed, style }: CurvedEdgeProps) => {
   return (
     <svg
       id={id}
@@ -12,6 +12,7 @@ export const CurvedEdge = ({ id, colour, path, dashed }: CurvedEdgeProps) => {
       viewBox={'0 0 100 100'}
       className={styles.curve}
       preserveAspectRatio='none'
+      style={style}
     >
       <path
         d={path}

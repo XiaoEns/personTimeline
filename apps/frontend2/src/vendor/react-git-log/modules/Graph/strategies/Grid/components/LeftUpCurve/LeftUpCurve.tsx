@@ -45,6 +45,10 @@ export const LeftUpCurve = ({ color, isPlaceholder, showTopBreakPoint }: LeftUpC
         dashed={isPlaceholder}
         id='left-up-curve-curved-line'
         path='M 0,53 A 50,50 0 0,0 50,0'
+        style={{
+          top: (ROW_HEIGHT + rowSpacing - CURVE_SIZE) / 2,
+          left: `calc(50% - ${CURVE_SIZE / 2}px)`,
+        }}
       />
 
       <div
