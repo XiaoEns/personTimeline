@@ -60,6 +60,7 @@ person ────< person_event >──── event
 | granularity | VARCHAR(10) | NOT NULL, CHECK(YEAR/MONTH/DAY/SEASON) | 时间粒度 |
 | event_type | VARCHAR(30) | NOT NULL, CHECK(BIRTH/DEATH/EDUCATION/CAREER/CREATION/HISTORICAL/OTHER) | 事件类型 |
 | location | JSONB | NOT NULL DEFAULT '{}' | 地点 JSON |
+| persons | JSONB | NOT NULL DEFAULT '[]' | 关联人物的名字字符串数组，例如 ["曹操", "诸葛亮"] |
 | is_inferred | BOOLEAN | NOT NULL DEFAULT FALSE | 是否 AI 推断 |
 | source | VARCHAR(1000) | | 来源说明 |
 | created_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | 创建时间 |

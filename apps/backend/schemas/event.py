@@ -50,6 +50,7 @@ class EventCreate(BaseModel):
     event_type: str = Field(max_length=30)
     location: dict | None = None
     source: str | None = Field(None, max_length=1000)
+    persons: list[str] | None = None
     person_ids: list[UUID] | None = None
 
 
@@ -65,6 +66,7 @@ class EventUpdate(BaseModel):
     event_type: str | None = Field(None, max_length=30)
     location: dict | None = None
     source: str | None = Field(None, max_length=1000)
+    persons: list[str] | None = None
 
 
 class EventListItem(BaseModel):

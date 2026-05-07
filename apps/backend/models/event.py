@@ -62,6 +62,10 @@ class Event(Base):
         JSONB, server_default=text("'{}'::jsonb"),
         comment='地点 JSON，包含名称和坐标',
     )
+    persons: Mapped[list] = mapped_column(
+        JSONB, server_default=text("'[]'::jsonb"),
+        comment='关联人物名字字符串数组，例如 ["曹操", "诸葛亮", "刘备"]',
+    )
     is_inferred: Mapped[bool] = mapped_column(
         Boolean, default=False,
         comment='是否由 AI 自动推断而非人工确认',

@@ -51,6 +51,7 @@ CREATE TABLE event (
     event_type    VARCHAR(30) NOT NULL
                     CHECK (event_type IN ('BIRTH','DEATH','EDUCATION','CAREER','CREATION','HISTORICAL','OTHER')),
     location      JSONB NOT NULL DEFAULT '{}',
+    persons       JSONB NOT NULL DEFAULT '[]',
     is_inferred   BOOLEAN NOT NULL DEFAULT FALSE,
     source        VARCHAR(1000),
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -68,6 +69,7 @@ COMMENT ON COLUMN event.sort_date IS '排序基准日，用于时间轴排序（
 COMMENT ON COLUMN event.granularity IS '时间粒度: YEAR/MONTH/DAY/SEASON';
 COMMENT ON COLUMN event.event_type IS '事件类型分类';
 COMMENT ON COLUMN event.location IS '地点 JSON，包含名称和坐标';
+COMMENT ON COLUMN event.persons IS '关联人物名字字符串数组，例如 ["曹操", "诸葛亮", "刘备"]';
 COMMENT ON COLUMN event.is_inferred IS '是否由 AI 自动推断而非人工确认';
 COMMENT ON COLUMN event.source IS '事件信息来源（书名、URL等）';
 COMMENT ON COLUMN event.created_at IS '记录创建时间';
