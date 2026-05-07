@@ -13,8 +13,6 @@ import type {
   PersonEventUpdate,
   PersonEvent,
   PersonEventList,
-  BiographyText,
-  BiographyTextList,
   ExtractRequest,
   ExtractResult,
 } from '@person-timeline/api-types'
@@ -79,27 +77,10 @@ export function deletePersonEvent(personEventId: string) {
   return apiClient.delete<void>(`/person-events/${personEventId}`).then(r => r.data)
 }
 
-/** 获取传记文本列表 */
-export function listBiographyTexts(personId: string) {
-  return apiClient.get<BiographyTextList>(`/persons/${personId}/biography`).then(r => r.data)
-}
-
-/** 上传传记文件 */
-export function uploadBiography(file: File, personId: string) {
-  const formData = new FormData()
-  formData.append('file', file)
-  formData.append('person_id', personId)
-  return apiClient.post<BiographyText>('/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }).then(r => r.data)
-}
-
-/** 删除传记文本 */
-export function deleteBiography(biographyId: string) {
-  return apiClient.delete<void>(`/biography/${biographyId}`).then(r => r.data)
-}
-
-/** AI 事件抽取 */
+/**
+ * AI 事件抽取
+ * @deprecated 请使用 upload.ts 中的 extractFileEvents 代替（v2 文件级抽取）
+ */
 export function extractEvents(personId: string, data?: ExtractRequest) {
   return apiClient.post<ExtractResult>(`/persons/${personId}/extract`, data).then(r => r.data)
 }

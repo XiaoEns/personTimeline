@@ -1,25 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Button, message } from 'antd'
-import { listPersons, uploadBiography, listBiographyTexts, deleteBiography, extractEvents } from '@/api/persons'
-import type { PersonListItem, BiographyTextItem, ExtractEventItem } from '@person-timeline/api-types'
-
-function formatFileSize(len: number): string {
-  if (len < 1024) return `${len}B`
-  if (len < 1024 * 1024) return `${(len / 1024).toFixed(1)}KB`
-  return `${(len / (1024 * 1024)).toFixed(1)}MB`
-}
-
-function formatDate(iso: string): string {
-  return iso.slice(0, 10)
-}
+import { listPersons, extractEvents } from '@/api/persons'
+import { uploadFile } from '@/api/upload'
+import type { PersonListItem, ExtractEventItem } from '@person-timeline/api-types'
 
 export default function UploadPage() {
   const [persons, setPersons] = useState<PersonListItem[]>([])
   const [selectedPersonId, setSelectedPersonId] = useState('')
   const [dragOver, setDragOver] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [biographies, setBiographies] = useState<BiographyTextItem[]>([])
-  const [bioLoading, setBioLoading] = useState(false)
   const [extracting, setExtracting] = useState(false)
   const [extractResult, setExtractResult] = useState<ExtractEventItem[] | null>(null)
   const [extractError, setExtractError] = useState('')
@@ -27,20 +16,6 @@ export default function UploadPage() {
   useEffect(() => {
     listPersons({ page_size: 200 }).then(res => setPersons(res.items))
   }, [])
-
-  useEffect(() => {
-    if (!selectedPersonId) {
-      setBiographies([])
-      setExtractResult(null)
-      return
-    }
-    setBiographies([])
-    setExtractResult(null)
-    setBioLoading(true)
-    listBiographyTexts(selectedPersonId)
-      .then(res => setBiographies(res.items))
-      .finally(() => setBioLoading(false))
-  }, [selectedPersonId])
 
   const handleFile = async (file: File) => {
     const ext = file.name.split('.').pop()?.toLowerCase()
@@ -54,10 +29,8 @@ export default function UploadPage() {
     }
     setUploading(true)
     try {
-      await uploadBiography(file, selectedPersonId)
+      await uploadFile(file, selectedPersonId)
       message.success('上传成功')
-      const res = await listBiographyTexts(selectedPersonId)
-      setBiographies(res.items)
     } catch {
       // error handled by interceptor
     } finally {
@@ -78,20 +51,7 @@ export default function UploadPage() {
     e.target.value = ''
   }
 
-  const handleDeleteBio = async (id: string) => {
-    if (!window.confirm('确定要删除该传记文本吗？')) return
-    try {
-      await deleteBiography(id)
-      message.success('删除成功')
-      const res = await listBiographyTexts(selectedPersonId)
-      setBiographies(res.items)
-    } catch {
-      // error handled by interceptor
-    }
-  }
-
   const handleExtract = async () => {
-    if (!selectedPersonId || biographies.length === 0) return
     setExtracting(true)
     setExtractError('')
     setExtractResult(null)
@@ -160,43 +120,6 @@ export default function UploadPage() {
         </div>
       </section>
 
-      {/* 传记文本列表 */}
-      {selectedPersonId && (
-        <section className="rounded-lg border bg-white p-6">
-          <h3 className="text-sm font-medium text-gray-700 mb-3">已上传文本</h3>
-          {bioLoading ? (
-            <div className="text-sm text-gray-400">加载中...</div>
-          ) : biographies.length === 0 ? (
-            <div className="text-sm text-gray-400">暂无上传文本</div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-gray-500">
-                  <th className="pb-2 font-medium">文件名</th>
-                  <th className="pb-2 font-medium">大小</th>
-                  <th className="pb-2 font-medium">上传时间</th>
-                  <th className="pb-2 font-medium">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                {biographies.map(bio => (
-                  <tr key={bio.id} className="border-b last:border-0 hover:bg-gray-50">
-                    <td className="py-2">{bio.source_file}</td>
-                    <td className="py-2 text-gray-500">{formatFileSize(bio.text_length)}</td>
-                    <td className="py-2 text-gray-500">{formatDate(bio.created_at)}</td>
-                    <td className="py-2">
-                      <Button type="link" size="small" danger onClick={() => handleDeleteBio(bio.id)}>
-                        删除
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </section>
-      )}
-
       {/* AI 事件抽取 */}
       {selectedPersonId && (
         <section className="rounded-lg border bg-white p-6">
@@ -205,15 +128,11 @@ export default function UploadPage() {
             <Button
               type="primary"
               loading={extracting}
-              disabled={biographies.length === 0}
               onClick={handleExtract}
             >
               {extracting ? '抽取中...' : '开始抽取'}
             </Button>
           </div>
-          {biographies.length === 0 && (
-            <p className="text-sm text-gray-400">暂无传记文本，请先上传</p>
-          )}
           {extractError && (
             <p className="text-sm text-red-500">{extractError}</p>
           )}
