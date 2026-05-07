@@ -166,7 +166,7 @@
 
 ### Task 5: 文件切片服务
 
-- **状态**: 🔄 进行中
+- **状态**: ✅ 已完成
 - **文件**: 
   - `apps/backend/services/chunking_service.py`（新建）
 - **描述**:

@@ -1,11 +1,10 @@
 """
-文件文本提取服务 + AI 事件抽取服务。
-支持 TXT/PDF 文本提取（同步），以及调用大模型从传记文本中提取结构化事件（异步）。
+AI 事件抽取服务。
+调用大模型从传记文本中提取结构化事件（异步）。
 """
 import json
 from uuid import UUID
 
-import fitz
 from openai import AsyncOpenAI
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +14,7 @@ from config import settings
 from models.biography_text import BiographyText
 from models.event import Event
 from models.person_event import PersonEvent
+from services.chunking_service import extract_text  # noqa: F401 已迁移至 chunking_service，保留向后兼容
 
 # LLM 事件抽取系统提示词
 EXTRACTION_PROMPT = (
@@ -38,33 +38,6 @@ EXTRACTION_PROMPT = (
     '请以如下 JSON 格式返回（不要用 markdown 代码块包裹）：\n'
     '{"events": [...]}'
 )
-
-
-def extract_text(content: bytes, filename: str) -> str:
-    """
-    从文件中提取纯文本内容，根据文件扩展名选择提取方式。
-    参数:
-        content: 文件二进制内容
-        filename: 文件名（用于判断格式）
-    返回:
-        提取的纯文本
-    抛出:
-        ValueError: 不支持的文件格式
-    """
-    lower_name = filename.lower()
-
-    if lower_name.endswith('.txt'):
-        return content.decode('utf-8')
-
-    if lower_name.endswith('.pdf'):
-        doc = fitz.open(stream=content, filetype='pdf')
-        parts = []
-        for page in doc:
-            parts.append(page.get_text())
-        doc.close()
-        return '\n'.join(parts)
-
-    raise ValueError('不支持的文件格式，仅支持 .txt 和 .pdf')
 
 
 async def extract_events_from_llm(
