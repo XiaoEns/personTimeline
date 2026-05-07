@@ -141,7 +141,7 @@
 
 ### Task 9: 前端 API 层更新
 
-- **状态**: ⬜ 未开始
+- **状态**: ✅ 已完成
 - **文件**:
   - `apps/frontend/src/api/upload.ts`（新建）
   - `apps/frontend/src/api/persons.ts`（修改）
@@ -166,7 +166,7 @@
 
 ### Task 5: 文件切片服务
 
-- **状态**: ⬜ 未开始
+- **状态**: 🔄 进行中
 - **文件**: 
   - `apps/backend/services/chunking_service.py`（新建）
 - **描述**:
@@ -188,7 +188,7 @@
 
 ### Task 10: 前端 upload Zustand Store
 
-- **状态**: ⬜ 未开始
+- **状态**: ✅ 已完成
 - **文件**: 
   - `apps/frontend/src/stores/upload.ts`（新建）
 - **描述**:
