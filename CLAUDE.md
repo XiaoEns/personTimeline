@@ -5,8 +5,7 @@
 
 ## 技术栈
 - **后端**: Python 3.11+ / FastAPI / PostgreSQL 15+
-- **前端（主）**: React 19 + TypeScript + Vite + Zustand + React Router + Ant Design 5
-- **前端（旧）**: Vue 3 (Composition API) + Vite + Pinia + Vue Router + Element Plus（逐步弃用）
+- **前端**: React 19 + TypeScript + Vite + Zustand + React Router + Ant Design 5
 - **可视化**: D3.js (SVG)
 - **样式**: Tailwind CSS v4
 - **包管理**: pnpm
@@ -14,7 +13,7 @@
 ## 项目结构
 详见 [README.md](README.md) 中的目录结构说明。
 
-React 版前端（`apps/frontend2/`）结构：
+前端（`apps/frontend/`）结构：
 ```
 src/
 ├── api/              # API 调用层（与后端共享类型）
@@ -57,8 +56,7 @@ src/
 
 ### 前后端并行开发
 - 窗口 1（后端）：`uvicorn main:app --reload --port 8000`
-- 窗口 2（前端 React）：`cd apps/frontend2 && pnpm dev`（端口 3001）
-- 窗口 3（前端 Vue，可选）：`cd apps/frontend && pnpm dev`（端口 3000）
+- 窗口 2（前端）：`cd apps/frontend && pnpm dev`（端口 3000）
 - API 契约 → `packages/api-types/`，前端 mock 先行
 
 ## 如何让 Claude 理解本项目

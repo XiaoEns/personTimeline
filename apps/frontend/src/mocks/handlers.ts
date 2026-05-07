@@ -1,6 +1,5 @@
 import { http, HttpResponse } from 'msw'
 import {
-  UUIDS,
   MOCK_PERSONS,
   MOCK_PERSON_DETAILS,
   MOCK_EVENTS,
@@ -94,7 +93,7 @@ export const handlers = [
     return HttpResponse.json({ ...detail, ...body, updated_at: new Date().toISOString() })
   }),
 
-  http.delete('/api/persons/:personId', ({ params }) => {
+  http.delete('/api/persons/:personId', () => {
     return HttpResponse.json(null, { status: 204 })
   }),
 
@@ -110,7 +109,7 @@ export const handlers = [
     return HttpResponse.json({ alias: body.alias, person_id: params.personId }, { status: 201 })
   }),
 
-  http.delete('/api/persons/:personId/aliases/:alias', ({ params }) => {
+  http.delete('/api/persons/:personId/aliases/:alias', () => {
     return HttpResponse.json(null, { status: 204 })
   }),
 

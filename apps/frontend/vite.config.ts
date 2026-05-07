@@ -1,28 +1,23 @@
 import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
+import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import AutoImport from 'unplugin-auto-import/vite'
-import Components from 'unplugin-vue-components/vite'
-import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
-import { fileURLToPath } from 'url'
-import { dirname, resolve } from 'path'
-
-const __dirname = dirname(fileURLToPath(import.meta.url))
+import svgr from 'vite-plugin-svgr'
+import path from 'path'
 
 export default defineConfig({
-  plugins: [
-    vue(),
-    tailwindcss(),
-    AutoImport({
-      resolvers: [ElementPlusResolver()],
-    }),
-    Components({
-      resolvers: [ElementPlusResolver()],
-    }),
-  ],
+  plugins: [react(), tailwindcss(), svgr()],
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src'),
+      '@': path.resolve(__dirname, 'src'),
+      // react-git-log 库内部路径别名
+      modules: path.resolve(__dirname, 'src/vendor/react-git-log/modules'),
+      components: path.resolve(__dirname, 'src/vendor/react-git-log/components'),
+      context: path.resolve(__dirname, 'src/vendor/react-git-log/context'),
+      hooks: path.resolve(__dirname, 'src/vendor/react-git-log/hooks'),
+      constants: path.resolve(__dirname, 'src/vendor/react-git-log/constants'),
+      data: path.resolve(__dirname, 'src/vendor/react-git-log/data'),
+      types: path.resolve(__dirname, 'src/vendor/react-git-log/types'),
+      assets: path.resolve(__dirname, 'src/vendor/react-git-log/assets'),
     },
   },
   server: {

@@ -1,7 +1,5 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { create } from 'zustand'
 import type {
-  Event,
   EventCreate,
   EventUpdate,
   EventDetail,
@@ -10,97 +8,83 @@ import type {
 } from '@person-timeline/api-types'
 import * as eventApi from '@/api/events'
 
-/**
- * 事件管理 Store
- * 管理事件列表、当前事件详情等状态
- */
-export const useEventStore = defineStore('event', () => {
-  // ========== 列表状态 ==========
-  const list = ref<EventListItem[]>([])
-  const total = ref(0)
-  const page = ref(1)
-  const pageSize = ref(20)
-  const listLoading = ref(false)
+interface EventState {
+  list: EventListItem[]
+  total: number
+  page: number
+  pageSize: number
+  listLoading: boolean
+  currentEvent: EventDetail | null
+  detailLoading: boolean
+  saving: boolean
 
-  // ========== 详情状态 ==========
-  const currentEvent = ref<EventDetail | null>(null)
-  const detailLoading = ref(false)
+  fetchList: (params?: ListEventsParams) => Promise<void>
+  fetchById: (id: string) => Promise<EventDetail>
+  create: (data: EventCreate) => Promise<EventDetail>
+  update: (id: string, data: EventUpdate) => Promise<EventDetail>
+  remove: (id: string) => Promise<void>
+  resetCurrent: () => void
+}
 
-  // ========== 操作状态 ==========
-  const saving = ref(false)
+export const useEventStore = create<EventState>((set) => ({
+  list: [],
+  total: 0,
+  page: 1,
+  pageSize: 20,
+  listLoading: false,
+  currentEvent: null,
+  detailLoading: false,
+  saving: false,
 
-  /** 获取事件列表（分页 + 筛选） */
-  async function fetchList(params?: ListEventsParams) {
-    listLoading.value = true
+  async fetchList(params) {
+    set({ listLoading: true })
     try {
       const res = await eventApi.listEvents(params)
-      list.value = res.data.items
-      total.value = res.data.total
-      page.value = res.data.page
-      pageSize.value = res.data.page_size
+      set({
+        list: res.items,
+        total: res.total,
+        page: params?.page || 1,
+        pageSize: params?.page_size || 20,
+      })
     } finally {
-      listLoading.value = false
+      set({ listLoading: false })
     }
-  }
+  },
 
-  /** 获取事件详情 */
-  async function fetchById(id: string) {
-    detailLoading.value = true
+  async fetchById(id) {
+    set({ detailLoading: true })
     try {
-      const res = await eventApi.getEvent(id)
-      currentEvent.value = res.data
-      return res.data
+      const data = await eventApi.getEvent(id)
+      set({ currentEvent: data })
+      return data
     } finally {
-      detailLoading.value = false
+      set({ detailLoading: false })
     }
-  }
+  },
 
-  /** 创建事件 */
-  async function create(data: EventCreate) {
-    saving.value = true
+  async create(data) {
+    set({ saving: true })
     try {
-      const res = await eventApi.createEvent(data)
-      return res.data
+      return await eventApi.createEvent(data)
     } finally {
-      saving.value = false
+      set({ saving: false })
     }
-  }
+  },
 
-  /** 更新事件 */
-  async function update(id: string, data: EventUpdate) {
-    saving.value = true
+  async update(id, data) {
+    set({ saving: true })
     try {
-      const res = await eventApi.updateEvent(id, data)
-      return res.data
+      return await eventApi.updateEvent(id, data)
     } finally {
-      saving.value = false
+      set({ saving: false })
     }
-  }
+  },
 
-  /** 删除事件 */
-  async function remove(id: string) {
+  async remove(id) {
     await eventApi.deleteEvent(id)
-  }
+  },
 
-  /** 重置详情状态 */
-  function resetCurrent() {
-    currentEvent.value = null
-  }
-
-  return {
-    list,
-    total,
-    page,
-    pageSize,
-    listLoading,
-    currentEvent,
-    detailLoading,
-    saving,
-    fetchList,
-    fetchById,
-    create,
-    update,
-    remove,
-    resetCurrent,
-  }
-})
+  resetCurrent() {
+    set({ currentEvent: null })
+  },
+}))

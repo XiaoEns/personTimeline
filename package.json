@@ -4,11 +4,9 @@
   "private": true,
   "description": "个人时间线应用 — 记录、管理和可视化个人生活时间线",
   "scripts": {
-    "dev:frontend": "cd apps/frontend && npm run dev",
-    "dev:frontend2": "cd apps/frontend2 && npm run dev",
-    "dev:backend": "cd apps/backend && npm run dev",
-    "build:frontend": "cd apps/frontend && npm run build",
-    "build:frontend2": "cd apps/frontend2 && npm run build",
+    "dev:frontend": "cd apps/frontend && pnpm dev",
+    "dev:backend": "cd apps/backend && pnpm dev",
+    "build:frontend": "cd apps/frontend && pnpm build",
     "build:backend": "cd apps/backend && npm run build"
   },
   "workspaces": [

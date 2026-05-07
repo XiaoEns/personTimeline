@@ -14,14 +14,7 @@ personTimeline/
 │   ├── hooks/            # AI 工程流程自动化
 │   └── settings.json     # AI 行为配置
 ├── apps/
-│   ├── frontend/         # 前端应用（Vue 3 + Vite，逐步弃用）
-│   │   └── src/
-│   │       ├── api/           # API 调用层
-│   │       ├── layouts/       # 布局组件
-│   │       ├── router/        # 路由配置
-│   │       ├── styles/        # 样式
-│   │       └── views/         # 页面组件
-│   ├── frontend2/        # 前端应用（React 19 + Vite，主版本）
+│   ├── frontend/         # 前端应用（React 19 + Vite）
 │   │   └── src/
 │   │       ├── api/           # API 调用层
 │   │       ├── components/    # 复用组件
@@ -87,16 +80,16 @@ cp .env.example .env
 uvicorn main:app --reload --port 8000
 ```
 
-### 3. 启动前端（React 主版本）
+### 3. 启动前端
 ```bash
-cd apps/frontend2
+cd apps/frontend
 
 # 安装依赖
 pnpm install
 
 # 启动开发服务
 pnpm dev
-# 默认 http://localhost:3001
+# 默认 http://localhost:3000
 ```
 
 ### 4. 同时开发前后端
@@ -105,7 +98,7 @@ pnpm dev
 | 窗口 | 命令 |
 |------|------|
 | 窗口 1（后端） | `cd apps/backend && uvicorn main:app --reload --port 8000` |
-| 窗口 2（前端 React） | `cd apps/frontend2 && pnpm dev` |
+| 窗口 2（前端） | `cd apps/frontend && pnpm dev` |
 
 后端 API 默认 `http://localhost:8000`，前端开发服务器自动代理 API 请求到后端。
 

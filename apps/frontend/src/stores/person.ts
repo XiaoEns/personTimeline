@@ -1,143 +1,118 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { create } from 'zustand'
 import type {
   Person,
   PersonCreate,
   PersonUpdate,
   PersonDetail,
   PersonListItem,
-  PaginatedPersons,
   ListPersonsParams,
 } from '@person-timeline/api-types'
 import * as personApi from '@/api/persons'
 
-/**
- * 人物管理 Store
- * 管理人物列表、当前人物详情、别名等状态
- */
-export const usePersonStore = defineStore('person', () => {
-  // ========== 列表状态 ==========
-  const list = ref<PersonListItem[]>([])
-  const total = ref(0)
-  const page = ref(1)
-  const pageSize = ref(20)
-  const listLoading = ref(false)
+interface PersonState {
+  list: PersonListItem[]
+  total: number
+  page: number
+  pageSize: number
+  listLoading: boolean
+  currentPerson: PersonDetail | null
+  detailLoading: boolean
+  aliases: string[]
+  aliasLoading: boolean
+  saving: boolean
 
-  // ========== 详情状态 ==========
-  const currentPerson = ref<PersonDetail | null>(null)
-  const detailLoading = ref(false)
+  fetchList: (params?: ListPersonsParams) => Promise<void>
+  fetchById: (id: string) => Promise<PersonDetail>
+  create: (data: PersonCreate) => Promise<Person>
+  update: (id: string, data: PersonUpdate) => Promise<Person>
+  remove: (id: string) => Promise<void>
+  fetchAliases: (personId: string) => Promise<void>
+  addAlias: (personId: string, alias: string) => Promise<void>
+  removeAlias: (personId: string, alias: string) => Promise<void>
+  resetCurrent: () => void
+}
 
-  // ========== 别名状态 ==========
-  const aliases = ref<string[]>([])
-  const aliasLoading = ref(false)
+export const usePersonStore = create<PersonState>((set, get) => ({
+  list: [],
+  total: 0,
+  page: 1,
+  pageSize: 20,
+  listLoading: false,
+  currentPerson: null,
+  detailLoading: false,
+  aliases: [],
+  aliasLoading: false,
+  saving: false,
 
-  // ========== 操作状态 ==========
-  const saving = ref(false)
-
-  /** 获取人物列表（分页 + 搜索 + 状态筛选） */
-  async function fetchList(params?: ListPersonsParams) {
-    listLoading.value = true
+  async fetchList(params) {
+    set({ listLoading: true })
     try {
       const res = await personApi.listPersons(params)
-      list.value = res.data.items
-      total.value = res.data.total
-      page.value = res.data.page
-      pageSize.value = res.data.page_size
+      set({
+        list: res.items,
+        total: res.total,
+        page: params?.page || 1,
+        pageSize: params?.page_size || 20,
+      })
     } finally {
-      listLoading.value = false
+      set({ listLoading: false })
     }
-  }
+  },
 
-  /** 获取人物详情 */
-  async function fetchById(id: string) {
-    detailLoading.value = true
+  async fetchById(id) {
+    set({ detailLoading: true })
     try {
-      const res = await personApi.getPerson(id)
-      currentPerson.value = res.data
-      aliases.value = res.data.aliases
-      return res.data
+      const data = await personApi.getPerson(id)
+      set({ currentPerson: data, aliases: data.aliases })
+      return data
     } finally {
-      detailLoading.value = false
+      set({ detailLoading: false })
     }
-  }
+  },
 
-  /** 创建人物 */
-  async function create(data: PersonCreate) {
-    saving.value = true
+  async create(data) {
+    set({ saving: true })
     try {
-      const res = await personApi.createPerson(data)
-      return res.data
+      return await personApi.createPerson(data)
     } finally {
-      saving.value = false
+      set({ saving: false })
     }
-  }
+  },
 
-  /** 更新人物 */
-  async function update(id: string, data: PersonUpdate) {
-    saving.value = true
+  async update(id, data) {
+    set({ saving: true })
     try {
-      const res = await personApi.updatePerson(id, data)
-      return res.data
+      return await personApi.updatePerson(id, data)
     } finally {
-      saving.value = false
+      set({ saving: false })
     }
-  }
+  },
 
-  /** 删除人物 */
-  async function remove(id: string) {
+  async remove(id) {
     await personApi.deletePerson(id)
-  }
+  },
 
-  // ========== 别名操作 ==========
-
-  /** 获取别名列表 */
-  async function fetchAliases(personId: string) {
-    aliasLoading.value = true
+  async fetchAliases(personId) {
+    set({ aliasLoading: true })
     try {
       const res = await personApi.listAliases(personId)
-      aliases.value = res.data.items
+      set({ aliases: res.items })
     } finally {
-      aliasLoading.value = false
+      set({ aliasLoading: false })
     }
-  }
+  },
 
-  /** 添加别名 */
-  async function addAlias(personId: string, alias: string) {
+  async addAlias(personId, alias) {
     await personApi.createAlias(personId, { alias })
-    await fetchAliases(personId)
-  }
+    await get().fetchAliases(personId)
+  },
 
-  /** 删除别名 */
-  async function removeAlias(personId: string, alias: string) {
+  async removeAlias(personId, alias) {
     await personApi.deleteAlias(personId, alias)
-    await fetchAliases(personId)
-  }
+    await get().fetchAliases(personId)
+  },
 
-  /** 重置详情状态 */
-  function resetCurrent() {
-    currentPerson.value = null
-    aliases.value = []
-  }
-
-  return {
-    list,
-    total,
-    page,
-    pageSize,
-    listLoading,
-    currentPerson,
-    detailLoading,
-    aliases,
-    aliasLoading,
-    saving,
-    fetchList,
-    fetchById,
-    create,
-    update,
-    remove,
-    fetchAliases,
-    addAlias,
-    removeAlias,
-    resetCurrent,
-  }
-})
+  resetCurrent() {
+    set({ currentPerson: null, aliases: [] })
+  },
+}))
