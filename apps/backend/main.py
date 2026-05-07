@@ -3,7 +3,9 @@ personTimeline API — FastAPI 应用入口。
 注册路由、中间件和启动/关闭事件。
 """
 import logging
+import os
 import time
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,11 +15,21 @@ from config import settings
 
 logger = logging.getLogger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """应用生命周期：启动时创建上传目录，关闭时清理资源。"""
+    os.makedirs(settings.upload_dir, exist_ok=True)
+    logger.info('上传目录已就绪: %s', settings.upload_dir)
+    yield
+
+
 app = FastAPI(
     title='personTimeline',
     description='多人物传记时间轴系统 — 第一阶段 API',
     version='1.0.0',
     docs_url='/docs',
+    lifespan=lifespan,
 )
 
 # CORS 中间件（允许前端开发服务器跨域访问）

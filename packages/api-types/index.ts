@@ -10,6 +10,7 @@ export type TimeType = 'POINT' | 'PERIOD' | 'FUZZY';
 export type Granularity = 'YEAR' | 'MONTH' | 'DAY' | 'SEASON';
 export type EventType = 'BIRTH' | 'DEATH' | 'EDUCATION' | 'CAREER' | 'CREATION' | 'HISTORICAL' | 'OTHER';
 export type PersonStatus = 'draft' | 'published';
+export type FileStatus = 'uploaded' | 'chunking' | 'chunked' | 'extracting' | 'completed' | 'error';
 
 // ---------- 通用 ----------
 
@@ -248,6 +249,56 @@ export interface BiographyTextList {
   items: BiographyTextItem[];
 }
 
+// ---------- 文件上传与切片 ----------
+
+export interface UploadedFileItem {
+  id: string;
+  original_name: string;
+  file_size: number;
+  file_type: 'txt' | 'pdf';
+  person_id: string;
+  person_name?: string;
+  status: FileStatus;
+  error_message?: string;
+  chunk_count: number;
+  created_at: string;
+}
+
+export interface UploadedFileDetail extends UploadedFileItem {
+  file_path: string;
+  updated_at: string;
+}
+
+export interface PaginatedUploadedFiles extends Pagination {
+  items: UploadedFileItem[];
+}
+
+export interface ChunkItem {
+  id: string;
+  file_id: string;
+  chunk_index: number;
+  text_length: number;
+  page: number | null;
+  created_at: string;
+}
+
+export interface ChunkListResponse {
+  items: ChunkItem[];
+  total: number;
+}
+
+export interface ChunkTextResponse {
+  id: string;
+  chunk_index: number;
+  raw_text: string;
+}
+
+export interface FileExtractResponse {
+  file_id: string;
+  status: FileStatus;
+  result?: ExtractResult;
+}
+
 // ---------- AI 抽取 ----------
 
 export interface ExtractRequest {
@@ -267,6 +318,7 @@ export interface ExtractEventItem {
   location: Record<string, unknown> | null;
   event_id: string;
   is_inferred: boolean;
+  persons: string[];
 }
 
 export interface ExtractResult {
@@ -283,6 +335,13 @@ export interface ListPersonsParams {
   status?: PersonStatus;
 }
 
+export interface ListUploadedFilesParams {
+  page?: number;
+  page_size?: number;
+  person_id?: string;
+  status?: FileStatus;
+}
+
 export interface ListEventsParams {
   page?: number;
   page_size?: number;
@@ -293,6 +352,7 @@ export interface ListEventsParams {
   sort?: 'sort_date' | '-sort_date' | 'created_at' | '-created_at';
 }
 
+/** @deprecated 旧上传方式已迁移到 upload.ts，请使用 uploadFile */
 export interface UploadBiographyParams {
   file: File;
   person_id: string;

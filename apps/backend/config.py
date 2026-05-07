@@ -38,6 +38,8 @@ class Settings:
     cors_origins: list[str] = field(default_factory=lambda:
         os.getenv('CORS_ORIGINS', 'http://localhost:5173').split(','),
     )
+    # 文件上传目录
+    upload_dir: str = os.getenv('UPLOAD_DIR', './uploads')
     # 上传限制（10MB）
     max_upload_size: int = 10 * 1024 * 1024
 
