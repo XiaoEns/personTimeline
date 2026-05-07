@@ -16,6 +16,7 @@ from database import Base
 
 if TYPE_CHECKING:
     from models.person import Person
+    from models.uploaded_file import UploadedFile
 
 
 class BiographyText(Base):
@@ -40,6 +41,18 @@ class BiographyText(Base):
     ocr_confidence: Mapped[float | None] = mapped_column(
         Float, comment='OCR 识别置信度 0-1',
     )
+    file_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey('uploaded_files.id', ondelete='SET NULL'),
+        comment='关联上传文件 ID（切片来源）',
+    )
+    file_path: Mapped[str | None] = mapped_column(
+        String(1000), comment='来源文件磁盘路径',
+    )
+    chunk_index: Mapped[int] = mapped_column(
+        Integer, default=0,
+        comment='切片序号，从 0 开始',
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text('NOW()'),
         comment='记录创建时间',
@@ -47,3 +60,6 @@ class BiographyText(Base):
 
     # 关系
     person: Mapped[Person] = relationship('Person', back_populates='biographies')
+    uploaded_file: Mapped[UploadedFile | None] = relationship(
+        'UploadedFile', back_populates='biographies',
+    )

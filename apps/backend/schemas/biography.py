@@ -1,6 +1,6 @@
 """
 传记文本相关 Pydantic Schema。
-对应 OpenAPI 中 BiographyText / BiographyTextItem / BiographyTextList。
+对应 OpenAPI 中 BiographyText / BiographyTextItem / BiographyTextList / ChunkItem / ChunkTextResponse。
 """
 from datetime import datetime
 from uuid import UUID
@@ -35,6 +35,35 @@ class BiographyTextList(BaseModel):
     items: list[BiographyTextItem]
 
 
+# ---------- 文件切片 ----------
+
+class ChunkItem(BaseModel):
+    """切片列表项（不含 raw_text 全文，仅含元数据）。"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    file_id: UUID | None = None
+    chunk_index: int = 0
+    text_length: int = 0
+    page: int | None = None
+    created_at: datetime
+
+
+class ChunkListResponse(BaseModel):
+    """切片列表响应。"""
+    items: list[ChunkItem]
+    total: int
+
+
+class ChunkTextResponse(BaseModel):
+    """单个切片完整文本响应。"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    chunk_index: int = 0
+    raw_text: str
+
+
 # ---------- AI 抽取 ----------
 
 class ExtractRequest(BaseModel):
@@ -56,9 +85,17 @@ class ExtractEventItem(BaseModel):
     location: dict | None = None
     event_id: UUID
     is_inferred: bool = True
+    persons: list[str] = []
 
 
 class ExtractResult(BaseModel):
     """AI 事件抽取结果。"""
     total: int
     events: list[ExtractEventItem]
+
+
+class FileExtractResponse(BaseModel):
+    """文件级事件抽取响应（触发抽取或查询抽取状态）。"""
+    file_id: UUID
+    status: str
+    result: ExtractResult | None = None

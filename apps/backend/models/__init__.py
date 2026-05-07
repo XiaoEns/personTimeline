@@ -8,6 +8,7 @@ from models.person_event import PersonEvent
 from models.person_alias import PersonAlias
 from models.biography_text import BiographyText
 from models.external_person_info import ExternalPersonInfo
+from models.uploaded_file import UploadedFile
 
 __all__ = [
     'Person',
@@ -16,4 +17,5 @@ __all__ = [
     'PersonAlias',
     'BiographyText',
     'ExternalPersonInfo',
+    'UploadedFile',
 ]

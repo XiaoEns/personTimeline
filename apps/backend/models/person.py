@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from models.person_alias import PersonAlias
     from models.biography_text import BiographyText
     from models.external_person_info import ExternalPersonInfo
+    from models.uploaded_file import UploadedFile
 
 
 class Person(Base):
@@ -75,5 +76,9 @@ class Person(Base):
     )
     external_infos: Mapped[list[ExternalPersonInfo]] = relationship(
         'ExternalPersonInfo', back_populates='person',
+        cascade='all, delete-orphan',
+    )
+    uploaded_files: Mapped[list[UploadedFile]] = relationship(
+        'UploadedFile', back_populates='person',
         cascade='all, delete-orphan',
     )
