@@ -5,7 +5,8 @@ const AdminLayout = lazy(() => import('@/layouts/AdminLayout'))
 const ViewerLayout = lazy(() => import('@/layouts/ViewerLayout'))
 const PersonList = lazy(() => import('@/pages/admin/PersonList'))
 const EventList = lazy(() => import('@/pages/admin/EventList'))
-const UploadPage = lazy(() => import('@/pages/admin/UploadPage'))
+const UploadedFilesPage = lazy(() => import('@/pages/admin/UploadedFilesPage'))
+const ChunkListPage = lazy(() => import('@/pages/admin/ChunkListPage'))
 const PersonTimeline = lazy(() => import('@/pages/viewer/PersonTimeline'))
 const PersonGitTree = lazy(() => import('@/pages/viewer/PersonGitTree'))
 
@@ -32,7 +33,8 @@ export const router = createBrowserRouter([
           { index: true, element: <Navigate to="/admin/persons" replace /> },
           { path: 'persons', element: <PersonList /> },
           { path: 'events', element: <EventList /> },
-          { path: 'upload', element: <UploadPage /> },
+          { path: 'upload', element: <UploadedFilesPage /> },
+          { path: 'upload/:fileId/chunks', element: <ChunkListPage /> },
         ],
       },
     ],

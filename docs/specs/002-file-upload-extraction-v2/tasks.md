@@ -210,7 +210,7 @@
 
 ### Task 11: PersonSearchSelect 组件
 
-- **状态**: ⬜ 未开始
+- **状态**: ✅ 已完成
 - **文件**: 
   - `apps/frontend/src/components/PersonSearchSelect.tsx`（新建）
 - **描述**:
@@ -230,7 +230,7 @@
 
 ### Task 6: LangChain 抽取服务重构
 
-- **状态**: ⬜ 未开始
+- **状态**: ✅ 已完成
 - **文件**: 
   - `apps/backend/services/extraction_service.py`（重写）
 - **描述**:
@@ -269,7 +269,7 @@
 
 ### Task 12: UploadedFilesPage 页面
 
-- **状态**: ⬜ 未开始
+- **状态**: ✅ 已完成
 - **文件**: 
   - `apps/frontend/src/pages/admin/UploadedFilesPage.tsx`（新建）
 - **描述**:
@@ -297,7 +297,7 @@
 
 ### Task 7: 上传路由重写
 
-- **状态**: ⬜ 未开始
+- **状态**: ✅ 已完成
 - **文件**: 
   - `apps/backend/routers/upload.py`（重写）
 - **描述**:
@@ -346,7 +346,7 @@
 
 ### Task 13: ChunkListPage 页面
 
-- **状态**: ⬜ 未开始
+- **状态**: ✅ 已完成
 - **文件**: 
   - `apps/frontend/src/pages/admin/ChunkListPage.tsx`（新建）
 - **描述**:
@@ -368,7 +368,7 @@
 
 ### Task 14: 前端路由与导航更新
 
-- **状态**: ⬜ 未开始
+- **状态**: ✅ 已完成
 - **文件**: 
   - `apps/frontend/src/router/index.tsx`
   - `apps/frontend/src/pages/admin/UploadPage.tsx`（可能删除）
