@@ -97,7 +97,7 @@
 
 ### Task 3: ORM 模型定义
 
-- **状态**: ⬜ 未开始
+- **状态**: ✅ 已完成
 - **文件**:
   - `apps/backend/models/uploaded_file.py`（新建）
   - `apps/backend/models/biography_text.py`（修改）
@@ -119,7 +119,7 @@
 
 ### Task 4: Pydantic Schemas
 
-- **状态**: ⬜ 未开始
+- **状态**: ✅ 已完成
 - **文件**:
   - `apps/backend/schemas/upload.py`（新建）
   - `apps/backend/schemas/biography.py`（修改）
