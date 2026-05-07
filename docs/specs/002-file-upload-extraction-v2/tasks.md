@@ -42,7 +42,7 @@
 
 ### Task 1: 数据库迁移 SQL 脚本
 
-- **状态**: ✅ 未开始
+- **状态**: ✅ 已完成
 - **文件**: 
   - `docs/database/schema.sql`（追加）
   - `docs/database/migration_v2.sql`（新建）
@@ -56,7 +56,7 @@
 
 ### Task 2: 后端配置与依赖更新
 
-- **状态**: ✅ 未开始
+- **状态**: ✅ 已完成
 - **文件**:
   - `apps/backend/config.py`
   - `apps/backend/requirements.txt`
@@ -74,7 +74,7 @@
 
 ### Task 8: 共享 API 类型定义 (TypeScript)
 
-- **状态**: ✅ 未开始
+- **状态**: ✅ 已完成
 - **文件**: 
   - `packages/api-types/index.ts`
 - **描述**:
