@@ -209,10 +209,10 @@ export const handlers = [
   http.post('/api/upload', async ({ request }) => {
     const formData = await request.formData()
     const file = formData.get('file') as File
-    const personId = formData.get('person_id') as string
+    const personId = formData.get('person_id') as string | null
     return HttpResponse.json({
       id: crypto.randomUUID(),
-      person_id: personId,
+      person_id: personId || null,
       source_file: file?.name || 'unknown.txt',
       page: null,
       text_length: file?.size || 0,

@@ -10,10 +10,12 @@ import type {
 } from '@person-timeline/api-types'
 
 /** 上传文件（.txt/.pdf），创建 uploaded_files 记录并启动后台切片 */
-export function uploadFile(file: File, personId: string) {
+export function uploadFile(file: File, personId?: string) {
   const formData = new FormData()
   formData.append('file', file)
-  formData.append('person_id', personId)
+  if (personId) {
+    formData.append('person_id', personId)
+  }
   return apiClient.post<UploadedFileItem>('/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }).then(r => r.data)

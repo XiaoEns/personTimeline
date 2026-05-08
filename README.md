@@ -77,7 +77,7 @@ pip install -r requirements.txt
 cp .env.example .env
 
 # 启动开发服务
-uvicorn main:app --reload --port 8000
+uvicorn main:app --reload --use-colors --port 8000
 ```
 
 ### 3. 启动前端

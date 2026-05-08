@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Button, Table, message } from 'antd'
+import { Button, Table, message, Modal } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { getUploadedFile, getChunks, getChunkText } from '@/api/upload'
 import type { UploadedFileDetail, ChunkItem } from '@person-timeline/api-types'
@@ -13,12 +13,16 @@ export default function ChunkListPage() {
   const [chunks, setChunks] = useState<ChunkItem[]>([])
   const [loading, setLoading] = useState(true)
   const [chunkTexts, setChunkTexts] = useState<Record<string, string>>({})
-  const [loadingTexts, setLoadingTexts] = useState<Record<string, boolean>>({})
-  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set())
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalText, setModalText] = useState('')
+  const [modalLoading, setModalLoading] = useState(false)
+
+  /** 记录已加载的 fileId，跳过 StrictMode 重复挂载导致的二次请求 */
+  const loadedFileIdRef = useRef<string | null>(null)
 
   /** 挂载时并行获取文件信息和切片列表 */
   useEffect(() => {
-    let cancelled = false
+    if (loadedFileIdRef.current === fileId) return
     async function load() {
       setLoading(true)
       try {
@@ -26,42 +30,38 @@ export default function ChunkListPage() {
           getUploadedFile(fileId!),
           getChunks(fileId!),
         ])
-        if (!cancelled) {
-          setFileInfo(file)
-          setChunks(chunkList.items)
-        }
+        setFileInfo(file)
+        setChunks(chunkList.items)
       } catch {
-        if (!cancelled) message.error('加载切片数据失败')
+        message.error('加载切片数据失败')
       } finally {
-        if (!cancelled) setLoading(false)
+        setLoading(false)
       }
     }
     load()
-    return () => { cancelled = true }
+    return () => { loadedFileIdRef.current = fileId! }
   }, [fileId])
 
-  /** 行展开/折叠：展开时懒加载切片文本 */
-  const handleExpand = useCallback(
-    async (expanded: boolean, record: ChunkItem) => {
-      if (!expanded) {
-        setExpandedKeys(prev => {
-          const next = new Set(prev)
-          next.delete(record.id)
-          return next
-        })
+  /** 点击查看：懒加载切片文本并以弹窗展示 */
+  const handleView = useCallback(
+    async (record: ChunkItem) => {
+      // 已缓存直接展示
+      if (chunkTexts[record.id]) {
+        setModalText(chunkTexts[record.id])
+        setModalOpen(true)
         return
       }
-      setExpandedKeys(prev => new Set(prev).add(record.id))
-      // 已缓存则跳过请求
-      if (chunkTexts[record.id]) return
-      setLoadingTexts(prev => ({ ...prev, [record.id]: true }))
+      setModalLoading(true)
+      setModalOpen(true)
       try {
         const res = await getChunkText(record.id)
         setChunkTexts(prev => ({ ...prev, [record.id]: res.raw_text }))
+        setModalText(res.raw_text)
       } catch {
         message.error('加载切片文本失败')
+        setModalOpen(false)
       } finally {
-        setLoadingTexts(prev => ({ ...prev, [record.id]: false }))
+        setModalLoading(false)
       }
     },
     [chunkTexts],
@@ -95,6 +95,16 @@ export default function ChunkListPage() {
       width: 170,
       render: (date: string) => date?.slice(0, 19).replace('T', ' '),
     },
+    {
+      title: '操作',
+      key: 'actions',
+      width: 80,
+      render: (_: unknown, record: ChunkItem) => (
+        <Button type="link" size="small" onClick={() => handleView(record)}>
+          查看
+        </Button>
+      ),
+    },
   ]
 
   return (
@@ -123,25 +133,22 @@ export default function ChunkListPage() {
         pagination={false}
         size="middle"
         locale={{ emptyText: '暂无切片数据' }}
-        expandable={{
-          expandedRowKeys: [...expandedKeys],
-          onExpand: handleExpand,
-          expandedRowRender: (record: ChunkItem) => {
-            if (loadingTexts[record.id]) {
-              return (
-                <div className="py-4 text-center text-gray-400">加载中...</div>
-              )
-            }
-            const text = chunkTexts[record.id]
-            if (!text) return null
-            return (
-              <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded bg-gray-50 p-4 text-sm leading-relaxed">
-                {text}
-              </pre>
-            )
-          },
-        }}
       />
+      {/* 原始文本弹窗 */}
+      <Modal
+        title="切片原始数据"
+        open={modalOpen}
+        onCancel={() => setModalOpen(false)}
+        footer={null}
+        width={720}
+        loading={modalLoading}
+      >
+        {!modalLoading && (
+          <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded bg-gray-50 p-4 text-sm leading-relaxed">
+            {modalText}
+          </pre>
+        )}
+      </Modal>
     </div>
   )
 }

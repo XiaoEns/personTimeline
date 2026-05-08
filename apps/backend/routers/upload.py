@@ -107,7 +107,7 @@ def _build_files_query(
 @router.post('/api/upload', response_model=UploadedFileResponse, status_code=201)
 async def upload_file(
     file: UploadFile = File(..., description='传记文件（.txt 或 .pdf）'),
-    person_id: str = Form(..., description='关联人物 ID'),
+    person_id: str | None = Form(None, description='关联人物 ID（可选）'),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -132,25 +132,28 @@ async def upload_file(
             f.write(content)
 
         # 创建 uploaded_files 记录
+        person_uuid = UUID(person_id) if person_id else None
         uploaded = UploadedFile(
             id=file_uuid,
             original_name=file.filename,
             file_path=full_path,
             file_size=len(content),
             file_type=ext,
-            person_id=UUID(person_id),
+            person_id=person_uuid,
             status='uploaded',
         )
         db.add(uploaded)
         await db.commit()
         await db.refresh(uploaded)
 
-        # 后台启动切片任务
-        asyncio.create_task(run_chunking(uploaded.id))
-        logger.info(
-            '文件上传完成，后台切片已启动: id=%s, name=%s, size=%d',
-            uploaded.id, uploaded.original_name, uploaded.file_size,
-        )
+        # 更新状态为 chunking 后启动后台切片，避免并发重复触发
+        # uploaded.status = 'chunking'
+        # await db.commit()
+        # asyncio.create_task(run_chunking(uploaded.id))
+        # logger.info(
+        #     '文件上传完成，后台切片已启动: id=%s, name=%s, size=%d',
+        #     uploaded.id, uploaded.original_name, uploaded.file_size,
+        # )
 
         return UploadedFileResponse(
             id=uploaded.id,
@@ -351,9 +354,12 @@ async def trigger_chunk(
             raise HTTPException(status_code=404, detail='文件记录不存在')
 
         if record.status in ('uploaded', 'error'):
-            # 启动后台切片
+            # 更新状态为 chunking 后启动后台切片，避免并发重复触发
+            prev_status = record.status
+            record.status = 'chunking'
+            await db.commit()
             asyncio.create_task(run_chunking(file_id))
-            logger.info('后台切片已启动: file_id=%s, prev_status=%s', file_id, record.status)
+            logger.info('后台切片已启动: file_id=%s, prev_status=%s', file_id, prev_status)
             return ChunkResult(status='chunking', chunk_count=0)
 
         # 返回当前状态及切片数
@@ -484,13 +490,13 @@ async def trigger_extract(
         if not record:
             raise HTTPException(status_code=404, detail='文件记录不存在')
 
-        if record.status in ('chunked', 'completed'):
-            # 启动后台抽取
+        if record.status in ('chunked'):
+            # 更新状态为 extracting 后启动事件抽取，避免并发重复触发
+            prev_status = record.status
+            record.status = 'extracting'
+            await db.commit()
             asyncio.create_task(run_extraction_for_file(file_id))
-            logger.info(
-                '后台抽取已启动: file_id=%s, prev_status=%s',
-                file_id, record.status,
-            )
+            logger.info('后台抽取已启动: file_id=%s, prev_status=%s', file_id, prev_status)
             return FileExtractResponse(file_id=file_id, status='extracting', result=None)
 
         if record.status == 'extracting':

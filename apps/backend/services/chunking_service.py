@@ -79,7 +79,7 @@ async def run_chunking(file_id: UUID) -> None:
         5. 更新状态为 chunked
         6. 异常时设置 status=error + error_message
     """
-    async with async_session() as db:  # type: AsyncSession
+    async with async_session() as db:
         try:
             # 1. 查询上传文件记录
             result = await db.execute(

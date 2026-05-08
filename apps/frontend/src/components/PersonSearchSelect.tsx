@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { Select } from 'antd'
-import { listPersons } from '@/api/persons'
+import { listPersons, getPerson } from '@/api/persons'
 import type { ListPersonsParams } from '@person-timeline/api-types'
 
 interface PersonSearchSelectProps {
@@ -49,8 +49,8 @@ export default function PersonSearchSelect({
         const params: ListPersonsParams = { search: keyword.trim(), page_size: 20 }
         const res = await listPersons(params)
         setOptions(res.items.map(p => ({ label: p.name, value: p.id })))
-      } catch {
-        // 搜索失败静默处理，不清空已有选项
+      } catch (err) {
+        console.error('搜索人物失败:', err)
       } finally {
         setLoading(false)
       }
@@ -78,6 +78,25 @@ export default function PersonSearchSelect({
       }
     }
   }, [])
+
+  /** value 回显：当已选中人物但 options 中无对应项时，自动获取人物姓名 */
+  useEffect(() => {
+    if (!value) return
+    if (options.some(opt => opt.value === value)) return
+
+    let cancelled = false
+    getPerson(value).then(person => {
+      if (cancelled) return
+      setOptions(prev => {
+        if (prev.some(opt => opt.value === value)) return prev
+        return [{ label: person.name, value: person.id }, ...prev]
+      })
+    }).catch(() => {
+      // 人物不存在或网络错误，降级显示 UUID
+    })
+
+    return () => { cancelled = true }
+  }, [value])
 
   return (
     <Select

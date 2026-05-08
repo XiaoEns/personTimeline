@@ -28,10 +28,11 @@ class BiographyText(Base):
         server_default=text('gen_random_uuid()'),
         comment='主键 UUID',
     )
-    person_id: Mapped[uuid.UUID] = mapped_column(
+    person_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey('person.id', ondelete='CASCADE'),
-        comment='关联人物 ID',
+        ForeignKey('person.id', ondelete='SET NULL'),
+        nullable=True,
+        comment='关联人物 ID，可为空（文件可先于人物上传）',
     )
     source_file: Mapped[str | None] = mapped_column(
         String(500), comment='来源文件名',
@@ -59,7 +60,7 @@ class BiographyText(Base):
     )
 
     # 关系
-    person: Mapped[Person] = relationship('Person', back_populates='biographies')
+    person: Mapped[Person | None] = relationship('Person', back_populates='biographies')
     uploaded_file: Mapped[UploadedFile | None] = relationship(
         'UploadedFile', back_populates='biographies',
     )

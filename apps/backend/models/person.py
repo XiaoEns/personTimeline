@@ -72,7 +72,6 @@ class Person(Base):
     )
     biographies: Mapped[list[BiographyText]] = relationship(
         'BiographyText', back_populates='person',
-        cascade='all, delete-orphan',
     )
     external_infos: Mapped[list[ExternalPersonInfo]] = relationship(
         'ExternalPersonInfo', back_populates='person',
@@ -80,5 +79,4 @@ class Person(Base):
     )
     uploaded_files: Mapped[list[UploadedFile]] = relationship(
         'UploadedFile', back_populates='person',
-        cascade='all, delete-orphan',
     )

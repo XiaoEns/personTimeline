@@ -13,7 +13,7 @@ class BiographyText(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    person_id: UUID
+    person_id: UUID | None = None
     source_file: str | None = Field(None, max_length=500)
     page: int | None = None
     text_length: int = 0

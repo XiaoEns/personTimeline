@@ -42,7 +42,7 @@ class EventService:
         # 重新加载关联数据
         result = await db.execute(
             select(Event)
-            .options(selectinload(Event.person_events))
+            .options(selectinload(Event.person_events).selectinload(PersonEvent.person))
             .where(Event.id == event.id)
         )
         return result.scalar_one()
@@ -72,7 +72,7 @@ class EventService:
         返回:
             (事件列表, 总记录数)
         """
-        query = select(Event).options(selectinload(Event.person_events))
+        query = select(Event).options(selectinload(Event.person_events).selectinload(PersonEvent.person))
         count_query = select(func.count(Event.id))
 
         # 按关联人物筛选需要联表
@@ -118,7 +118,7 @@ class EventService:
         """
         result = await db.execute(
             select(Event)
-            .options(selectinload(Event.person_events))
+            .options(selectinload(Event.person_events).selectinload(PersonEvent.person))
             .where(Event.id == event_id)
         )
         return result.scalar_one_or_none()
@@ -176,6 +176,7 @@ class EventService:
         """
         result = await db.execute(
             select(PersonEvent, Event)
+            .options(selectinload(Event.person_events).selectinload(PersonEvent.person))
             .join(Event, PersonEvent.event_id == Event.id)
             .where(PersonEvent.person_id == person_id)
             .order_by(PersonEvent.sort_order, Event.sort_date)

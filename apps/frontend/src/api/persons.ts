@@ -28,8 +28,8 @@ export function createPerson(data: PersonCreate) {
 }
 
 /** 获取人物详情 */
-export function getPerson(personId: string) {
-  return apiClient.get<PersonDetail>(`/persons/${personId}`).then(r => r.data)
+export function getPerson(personId: string, signal?: AbortSignal) {
+  return apiClient.get<PersonDetail>(`/persons/${personId}`, { signal }).then(r => r.data)
 }
 
 /** 更新人物 */
@@ -58,8 +58,8 @@ export function deleteAlias(personId: string, alias: string) {
 }
 
 /** 获取人物事件关联列表 */
-export function listPersonEvents(personId: string) {
-  return apiClient.get<PersonEventList>(`/persons/${personId}/events`).then(r => r.data)
+export function listPersonEvents(personId: string, signal?: AbortSignal) {
+  return apiClient.get<PersonEventList>(`/persons/${personId}/events`, { signal }).then(r => r.data)
 }
 
 /** 创建人物事件关联 */

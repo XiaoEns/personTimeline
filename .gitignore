@@ -27,6 +27,7 @@ Thumbs.db
 
 # 日志
 *.log
+logs/
 npm-debug.log*
 
 # Python
@@ -40,3 +41,5 @@ dist/
 CLAUDE.local.md
 
 tmp/
+
+**/uploads/

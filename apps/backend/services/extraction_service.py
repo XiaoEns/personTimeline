@@ -3,7 +3,7 @@ AI 事件抽取服务。
 使用 LangChain + 结构化输出从传记文本中提取事件，支持自动人物解析与关联。
 """
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
 from langchain_openai import ChatOpenAI
@@ -31,9 +31,9 @@ logger = logging.getLogger(__name__)
 
 class ExtractedEventItem(BaseModel):
     """LLM 提取的单个事件项，用于结构化输出。"""
-    title: str = Field(..., description='事件标题（简洁，10-30 字）')
+    title: str = Field(..., description='事件标题（简洁，3-8字）')
     description: str | None = Field(None, description='事件描述（1-3 句话）')
-    start_date: str = Field(..., description='事件开始时间（ISO 8601 格式，如 1660-01-01T00:00:00Z）')
+    start_date: str = Field(..., description='事件开始时间（格式，如 1660-01-01 00:00:00）')
     end_date: str = Field(..., description='事件结束时间（与 start_date 相同则为点事件）')
     display_time: str | None = Field(None, description='原文中的时间表述')
     time_type: str = Field(..., description='时间类型：POINT/PERIOD/FUZZY')
@@ -53,21 +53,99 @@ class ExtractedEventList(BaseModel):
 # ============================================================================
 
 EXTRACTION_SYSTEM_PROMPT = (
-    '你是一个专业的历史人物事件抽取助手。从给定的传记文本中提取所有可识别的事件。\n\n'
-    '要求：\n'
-    '1. 只提取文本中明确提到的事件，不要编造\n'
-    '2. 标题保留原文中的关键人物和动作，10-30 字\n'
-    '3. 时间字段使用 ISO 8601 格式（如 "1660-01-01T00:00:00Z"）\n'
-    '4. 若时间信息不完整，time_type 设为 FUZZY，start_date 用年份 01-01 补齐\n'
-    '5. 若文本中完全没有时间信息，仍要提取事件，time_type 设为 FUZZY，'
-    'start_date 和 end_date 使用 "0001-01-01T00:00:00Z"\n'
-    '6. persons 字段填写事件涉及的所有人物姓名（字符串列表），包括隐含参与者\n'
-    '7. 事件类型（event_type）可选值：BIRTH/DEATH/EDUCATION/CAREER/CREATION/HISTORICAL/OTHER\n'
-    '8. 按照文本中出现的时间顺序排列事件\n'
-    '9. location_name 填写事件发生的地点名称，未知则留空'
+    '你是一个专业的历史人物事件抽取助手。请从给定的传记文本中提取所有可识别的有时间的事件，并按时间顺序输出为 JSON 对象。\n\n'
+    '## 核心规则\n'
+    '- 只提取文本中**明确提到**的有时间的事件，严禁编造或推断。\n'
+    '- 事件按文本中出现的时间顺序排列。\n'
+    '- 输出必须是一个合法的 JSON 对象，格式为：{{"events": [...]}}\n\n'
+    '## 事件对象字段说明\n'
+    '| 字段 | 类型 | 说明 |\n'
+    '|------|------|------|\n'
+    '| title | string | 事件标题，含关键人物和动作，3-8字 |\n'
+    '| description | string or null | 事件描述原文或摘要，若无则 null |\n'
+    '| start_date | string | 开始时间，ISO 8601 格式 `yyyy-MM-ddTHH:mm:ss` |\n'
+    '| end_date | string or null | 结束时间（同上），单点事件与 start_date 相同 |\n'
+    '| display_time | string or null | 原文中的时间表述（如"康熙三年"） |\n'
+    '| time_type | string | `POINT` / `PERIOD` / `FUZZY` |\n'
+    '| granularity | string | `YEAR` / `MONTH` / `DAY` / `SEASON` |\n'
+    '| event_type | string | 见下方枚举 |\n'
+    '| location_name | string or null | 地点名称，未知则 null |\n'
+    '| persons | array of strings | 涉及的所有人物姓名（含隐含参与者） |\n\n'
+    '## event_type 枚举值\n'
+    '`BIRTH`, `DEATH`, `EDUCATION`, `CAREER`, `CREATION`, `HISTORICAL`, `OTHER`\n\n'
+    '## 时间处理细则\n'
+    '1. **完整时间** → `time_type=POINT`，按实际年月日时分秒填充，缺失部分补零（例：`1660-01-01T00:00:00`）\n'
+    '2. **仅知道年份** → `time_type=FUZZY`, `start_date=年份-01-01T00:00:00`, `granularity=YEAR`\n'
+    '3. **完全无时间信息** → `time_type=FUZZY`, `start_date=0001-01-01T00:00:00`, `end_date`相同\n\n'
+    '## 其他要求\n'
+    '- `persons` 字段包含所有直接或隐含参与者（如"被贬"隐含皇帝、官员等），人名保持原文表述。\n'
+    '- 若地点信息缺失，`location_name` 设为 `null`。\n'
+    '- `display_time` 保留原文时间字符串（如"康熙四年春"），无则 `null`。\n'
+    '- 标题不要添加原文没有的信息，30字为硬上限。\n'
+    '- 单点事件（如出生、死亡、任职）的 `end_date` 与 `start_date` 相同。\n\n'
+    '## 输出示例\n'
+    '{{\n'
+    '  "events": [\n'
+    '    {{\n'
+    '      "title": "郑成功出生",\n'
+    '      "description": "郑成功出生于日本平户",\n'
+    '      "start_date": "1624-08-27T00:00:00",\n'
+    '      "end_date": "1624-08-27T00:00:00",\n'
+    '      "display_time": "明天启四年七月十四",\n'
+    '      "time_type": "POINT",\n'
+    '      "granularity": "DAY",\n'
+    '      "event_type": "BIRTH",\n'
+    '      "location_name": "日本平户",\n'
+    '      "persons": ["郑成功"]\n'
+    '    }}\n'
+    '  ]\n'
+    '}}'
 )
 
 EXTRACTION_USER_PROMPT = '请从以下传记文本中提取事件：\n\n{text}'
+
+
+def _parse_date_safe(date_str: str) -> datetime:
+    """安全解析 LLM 输出的日期字符串为带 UTC 时区的 datetime。
+
+    处理多种日期格式，并强制附加 UTC 时区以绕过 Windows 平台上 asyncpg
+    对 1900 年前 naive datetime 的编码错误（C 运行时不支持负时间戳）。
+
+    参数:
+        date_str: LLM 输出的日期字符串
+    返回:
+        带 UTC 时区的 datetime，解析失败时返回 datetime(1,1,1, tzinfo=utc)
+    """
+    if not date_str or not date_str.strip():
+        return datetime(1, 1, 1, tzinfo=timezone.utc)
+
+    date_str = date_str.strip()
+
+    # ISO 8601 格式（T 分隔符）
+    try:
+        dt = datetime.fromisoformat(date_str)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except ValueError:
+        pass
+
+    # 空格分隔格式："YYYY-MM-DD HH:MM:SS"
+    try:
+        dt = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+        return dt.replace(tzinfo=timezone.utc)
+    except ValueError:
+        pass
+
+    # 仅日期格式："YYYY-MM-DD"
+    try:
+        dt = datetime.strptime(date_str, '%Y-%m-%d')
+        return dt.replace(tzinfo=timezone.utc)
+    except ValueError:
+        pass
+
+    logger.warning('无法解析日期字符串: %r，使用回退值', date_str)
+    return datetime(1, 1, 1, tzinfo=timezone.utc)
 
 
 # ============================================================================
@@ -94,7 +172,7 @@ async def extract_events_from_llm(text: str) -> ExtractedEventList:
     )
 
     structured_llm = llm.with_structured_output(
-        ExtractedEventList, method='json_schema',
+        ExtractedEventList, method='json_mode',
     )
 
     prompt = ChatPromptTemplate.from_messages([
@@ -194,7 +272,7 @@ async def run_extraction_for_file(file_id: UUID) -> None:
         9. 更新 uploaded_files.status = 'completed'
         10. 异常时设置 status='error' + error_message
     """
-    async with async_session() as db:  # type: AsyncSession
+    async with async_session() as db:
         try:
             # 1. 查询上传文件记录
             result = await db.execute(
@@ -206,8 +284,9 @@ async def run_extraction_for_file(file_id: UUID) -> None:
                 return
 
             # 2. 更新状态为 extracting
-            record.status = 'extracting'
-            await db.commit()
+            if record.status != 'extracting':
+                record.status = 'extracting'
+                await db.commit()
 
             # 3. 查询所有切片
             result = await db.execute(
@@ -234,7 +313,12 @@ async def run_extraction_for_file(file_id: UUID) -> None:
             seen_keys: set[tuple[str, str]] = set()
             unique_events: list[ExtractedEventItem] = []
             for ev in all_raw_events:
-                key = (ev.title, ev.start_date)
+                # 归一化日期字符串避免 LLM 格式差异导致去重失效
+                try:
+                    normalized_date = _parse_date_safe(ev.start_date).isoformat()
+                except Exception:
+                    normalized_date = ev.start_date
+                key = (ev.title.strip(), normalized_date)
                 if key not in seen_keys:
                     seen_keys.add(key)
                     unique_events.append(ev)
@@ -245,14 +329,8 @@ async def run_extraction_for_file(file_id: UUID) -> None:
                 person_ids = await _resolve_persons(db, ev.persons)
 
                 # 解析时间字符串
-                try:
-                    start_date = datetime.fromisoformat(ev.start_date)
-                except ValueError:
-                    start_date = datetime(1, 1, 1)
-                try:
-                    end_date = datetime.fromisoformat(ev.end_date)
-                except ValueError:
-                    end_date = start_date
+                start_date = _parse_date_safe(ev.start_date)
+                end_date = _parse_date_safe(ev.end_date) if ev.end_date else start_date
 
                 # 构建 location JSON
                 location: dict = {}
@@ -291,16 +369,17 @@ async def run_extraction_for_file(file_id: UUID) -> None:
                 file_id, record.original_name, len(unique_events),
             )
 
-        except Exception:
+        except Exception as exc:
             logger.exception('抽取失败: file_id=%s', file_id)
             try:
+                await db.rollback()
                 result = await db.execute(
                     select(UploadedFile).where(UploadedFile.id == file_id),
                 )
                 record = result.scalar_one_or_none()
                 if record:
                     record.status = 'error'
-                    record.error_message = f'抽取失败: {file_id}'
+                    record.error_message = f'抽取失败: {exc!r}'
                     await db.commit()
             except Exception:
                 logger.exception('更新错误状态失败: file_id=%s', file_id)

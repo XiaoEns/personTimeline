@@ -8,7 +8,8 @@ export function usePersonList() {
   const [currentPage, setCurrentPage] = useState(1)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingPersonId, setEditingPersonId] = useState<string | null>(null)
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const lastKeyRef = useRef<string | null>(null)
 
   const fetchList = useCallback(() => {
     store.fetchList({
@@ -19,16 +20,24 @@ export function usePersonList() {
     })
   }, [currentPage, search, statusFilter])
 
+  // 数据获取：筛选变更时 300ms 防抖，翻页时立即请求；cleanup 记录 key 防止 StrictMode 重复
   useEffect(() => {
-    clearTimeout(searchTimerRef.current)
-    setCurrentPage(1)
-    searchTimerRef.current = setTimeout(fetchList, 300)
-    return () => clearTimeout(searchTimerRef.current)
-  }, [search, statusFilter])
+    const key = `${currentPage}|${search}|${statusFilter}`
+    if (lastKeyRef.current === key) return
 
-  useEffect(() => {
-    fetchList()
-  }, [currentPage])
+    const prevFilter = lastKeyRef.current?.split('|').slice(1).join('|')
+    const currFilter = key.split('|').slice(1).join('|')
+    const pageOnly = lastKeyRef.current !== null && prevFilter === currFilter
+
+    clearTimeout(debounceRef.current)
+    if (pageOnly) {
+      fetchList()
+    } else {
+      debounceRef.current = setTimeout(fetchList, 300)
+    }
+
+    return () => { lastKeyRef.current = key }
+  }, [currentPage, search, statusFilter])
 
   const openCreate = useCallback(() => {
     setEditingPersonId(null)

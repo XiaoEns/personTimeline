@@ -5,22 +5,20 @@ import { useSearchParams } from 'react-router-dom'
 export function useEventList() {
   const store = useEventStore()
   const [searchParams, setSearchParams] = useSearchParams()
+  // 从 URL 参数直接初始化，避免额外 useEffect 触发重复请求
+  const initialPersonId = searchParams.get('person_id') || undefined
+  const initialPersonName = searchParams.get('person_name') || undefined
+
   const [search, setSearch] = useState('')
   const [eventTypeFilter, setEventTypeFilter] = useState('')
   const [timeTypeFilter, setTimeTypeFilter] = useState('')
-  const [personIdFilter, setPersonIdFilter] = useState<string | undefined>(undefined)
-  const [personNameFilter, setPersonNameFilter] = useState<string | undefined>(undefined)
+  const [personIdFilter, setPersonIdFilter] = useState<string | undefined>(initialPersonId)
+  const [personNameFilter, setPersonNameFilter] = useState<string | undefined>(initialPersonName)
   const [currentPage, setCurrentPage] = useState(1)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingEventId, setEditingEventId] = useState<string | null>(null)
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-
-  useEffect(() => {
-    const pid = searchParams.get('person_id')
-    const pname = searchParams.get('person_name')
-    if (pid) setPersonIdFilter(pid)
-    if (pname) setPersonNameFilter(pname)
-  }, [])
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const lastKeyRef = useRef<string | null>(null)
 
   const fetchData = useCallback(() => {
     store.fetchList({
@@ -33,16 +31,24 @@ export function useEventList() {
     })
   }, [currentPage, search, eventTypeFilter, timeTypeFilter, personIdFilter])
 
+  // 数据获取：筛选变更时 300ms 防抖，翻页时立即请求；cleanup 记录 key 防止 StrictMode 重复
   useEffect(() => {
-    clearTimeout(searchTimerRef.current)
-    setCurrentPage(1)
-    searchTimerRef.current = setTimeout(fetchData, 300)
-    return () => clearTimeout(searchTimerRef.current)
-  }, [search, eventTypeFilter, timeTypeFilter])
+    const key = `${currentPage}|${search}|${eventTypeFilter}|${timeTypeFilter}|${personIdFilter ?? ''}`
+    if (lastKeyRef.current === key) return
 
-  useEffect(() => {
-    fetchData()
-  }, [currentPage, personIdFilter])
+    const prevFilter = lastKeyRef.current?.split('|').slice(1).join('|')
+    const currFilter = key.split('|').slice(1).join('|')
+    const pageOnly = lastKeyRef.current !== null && prevFilter === currFilter
+
+    clearTimeout(debounceRef.current)
+    if (pageOnly) {
+      fetchData()
+    } else {
+      debounceRef.current = setTimeout(fetchData, 300)
+    }
+
+    return () => { lastKeyRef.current = key }
+  }, [currentPage, search, eventTypeFilter, timeTypeFilter, personIdFilter])
 
   const clearPersonFilter = useCallback(() => {
     setPersonIdFilter(undefined)

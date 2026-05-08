@@ -1,4 +1,5 @@
 import { Button, Input, Select, Table, Tag, Pagination, message, Modal } from 'antd'
+import { ReloadOutlined } from '@ant-design/icons'
 import { useEventList } from '@/hooks/useEventList'
 import EventFormDialog from '@/components/EventFormDialog'
 
@@ -103,7 +104,10 @@ export default function EventList() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold">事件管理</h2>
-        <Button type="primary" onClick={openCreate}>+ 新建事件</Button>
+        <div className="flex items-center gap-2">
+          <Button icon={<ReloadOutlined />} onClick={fetchData}>刷新</Button>
+          <Button type="primary" onClick={openCreate}>+ 新建事件</Button>
+        </div>
       </div>
 
       <div className="flex items-center gap-4 mb-4">

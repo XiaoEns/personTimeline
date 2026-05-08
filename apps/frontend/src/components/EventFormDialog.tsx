@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Modal, Form, Input, Select, DatePicker, Button, message } from 'antd'
+import { Modal, Form, Input, Select, DatePicker, Button, Tag, message } from 'antd'
 import { useEventStore } from '@/stores/event'
 import { listPersons } from '@/api/persons'
 import type { EventCreate, EventUpdate, EventType, TimeType, Granularity, PersonListItem } from '@person-timeline/api-types'
@@ -54,8 +54,8 @@ export default function EventFormDialog({ open, eventId, onClose, onSaved }: Eve
 
   useEffect(() => {
     if (open) {
-      fetchPersons()
       if (eventId) {
+        // 编辑模式：加载事件详情
         store.fetchById(eventId).then(ev => {
           form.setFieldsValue({
             title: ev.title,
@@ -72,6 +72,8 @@ export default function EventFormDialog({ open, eventId, onClose, onSaved }: Eve
           })
         })
       } else {
+        // 创建模式：加载人物列表供选择
+        fetchPersons()
         form.resetFields()
         form.setFieldsValue({
           time_type: 'POINT',
@@ -219,7 +221,7 @@ export default function EventFormDialog({ open, eventId, onClose, onSaved }: Eve
           <Form.Item name="source" label="来源">
             <Input placeholder="如：《三国志》" />
           </Form.Item>
-          {isCreate && (
+          {isCreate ? (
             <Form.Item name="person_ids" label="关联人物">
               <Select
                 mode="multiple"
@@ -234,6 +236,17 @@ export default function EventFormDialog({ open, eventId, onClose, onSaved }: Eve
                   <Select.Option key={p.id} value={p.id}>{p.name}</Select.Option>
                 ))}
               </Select>
+            </Form.Item>
+          ) : (
+            <Form.Item label="关联人物">
+              {store.currentEvent?.persons?.length
+                ? store.currentEvent.persons.map(p => (
+                    <Tag key={p.id} color="blue" className="mr-1 mb-1">
+                      {p.name}{p.role ? `（${p.role}）` : ''}
+                    </Tag>
+                  ))
+                : <span className="text-gray-400">无</span>
+              }
             </Form.Item>
           )}
         </Form>

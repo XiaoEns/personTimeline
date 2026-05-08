@@ -146,6 +146,8 @@ class PersonEventItem(BaseModel):
     end_date: datetime
     time_type: str
     event_type: str
+    persons: list[str] = []
+    person_ids: list[UUID] = []
 
 
 class PersonEventList(BaseModel):

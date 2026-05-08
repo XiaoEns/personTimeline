@@ -44,6 +44,8 @@ async def list_person_events(
             end_date=e.end_date,
             time_type=e.time_type,
             event_type=e.event_type,
+            persons=[ep.person.name for ep in (e.person_events or []) if ep.person],
+            person_ids=[ep.person_id for ep in (e.person_events or [])],
         )
         for pe, e in rows
     ]

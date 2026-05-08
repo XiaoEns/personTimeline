@@ -1,4 +1,5 @@
 import { Button, Input, Select, Table, Tag, Pagination, message, Modal } from 'antd'
+import { ReloadOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { usePersonList } from '@/hooks/usePersonList'
 import PersonFormDialog from '@/components/PersonFormDialog'
@@ -27,9 +28,14 @@ export default function PersonList() {
       okType: 'danger',
       cancelText: '取消',
       onOk: async () => {
-        await store.remove(id)
-        message.success('人物已删除')
-        fetchList()
+        try {
+          await store.remove(id)
+          message.success('人物已删除')
+          fetchList()
+        } catch (err: any) {
+          const detail = err?.response?.data?.detail || err?.message || '删除失败'
+          message.error(detail)
+        }
       },
     })
   }
@@ -93,7 +99,10 @@ export default function PersonList() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold">人物管理</h2>
-        <Button type="primary" onClick={openCreate}>+ 新建人物</Button>
+        <div className="flex items-center gap-2">
+          <Button icon={<ReloadOutlined />} onClick={fetchList}>刷新</Button>
+          <Button type="primary" onClick={openCreate}>+ 新建人物</Button>
+        </div>
       </div>
 
       <div className="flex items-center gap-4 mb-4">

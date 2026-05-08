@@ -73,7 +73,10 @@ async def create_person(
     创建人物。
     请求体中的字段除 name 外均为可选。
     """
-    person = await PersonService.create(db, data.model_dump(exclude_unset=True))
+    try:
+        person = await PersonService.create(db, data.model_dump(exclude_unset=True))
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     return PersonDetail(
         **person.__dict__,
         event_count=0,

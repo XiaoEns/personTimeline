@@ -27,7 +27,17 @@ class PersonService:
             data: 人物字段字典
         返回:
             已持久化的 Person ORM 对象
+        抛出:
+            ValueError: 人物姓名已存在
         """
+        # 检查同名人物是否已存在
+        if name := data.get('name'):
+            existing = await db.scalar(
+                select(Person.id).where(Person.name == name)
+            )
+            if existing:
+                raise ValueError(f'人物「{name}」已存在')
+
         person = Person(**data)
         db.add(person)
         await db.commit()

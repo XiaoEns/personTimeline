@@ -231,7 +231,7 @@ export interface AliasList {
 
 export interface BiographyText {
   id: string;
-  person_id: string;
+  person_id: string | null;
   source_file: string | null;
   page: number | null;
   text_length: number;
@@ -256,7 +256,7 @@ export interface UploadedFileItem {
   original_name: string;
   file_size: number;
   file_type: 'txt' | 'pdf';
-  person_id: string;
+  person_id: string | null;
   person_name?: string;
   status: FileStatus;
   error_message?: string;

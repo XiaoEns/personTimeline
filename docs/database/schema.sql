@@ -219,3 +219,14 @@ COMMENT ON COLUMN biography_text.file_path IS '来源文件磁盘路径，v2 新
 COMMENT ON COLUMN biography_text.chunk_index IS '切片序号（从 0 起），v2 新增';
 
 CREATE INDEX idx_bt_file ON biography_text(file_id);
+
+
+-- ============================================================
+-- v3 变更：文件与人物解耦
+-- ============================================================
+
+-- biography_text.person_id 改为可空，FK 改为 ON DELETE SET NULL
+ALTER TABLE biography_text ALTER COLUMN person_id DROP NOT NULL;
+ALTER TABLE biography_text DROP CONSTRAINT biography_text_person_id_fkey;
+ALTER TABLE biography_text ADD CONSTRAINT biography_text_person_id_fkey
+    FOREIGN KEY (person_id) REFERENCES person(id) ON DELETE SET NULL;

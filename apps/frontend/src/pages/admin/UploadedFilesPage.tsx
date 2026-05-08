@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, Table, Tag, Pagination, Upload, Popconfirm, message } from 'antd'
+import { ReloadOutlined } from '@ant-design/icons'
 import type { ColumnsType, TableProps } from 'antd/es/table'
 import { useUploadStore } from '@/stores/upload'
 import PersonSearchSelect from '@/components/PersonSearchSelect'
@@ -44,22 +45,21 @@ export default function UploadedFilesPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [dragOver, setDragOver] = useState(false)
 
+  /** 记录上次请求的依赖 key，跳过 StrictMode 双挂载导致的重复请求 */
+  const lastFetchKeyRef = useRef<string | null>(null)
+
   /** 筛选 / 分页变化时获取数据 */
   useEffect(() => {
+    const key = `${currentPage}|${selectedPersonId ?? ''}|${statusFilter ?? ''}`
+    if (lastFetchKeyRef.current === key) return
     store.fetchFiles({
       page: currentPage,
       page_size: store.pageSize,
       person_id: selectedPersonId,
       status: statusFilter,
     })
+    return () => { lastFetchKeyRef.current = key }
   }, [currentPage, selectedPersonId, statusFilter])
-
-  /** 组件卸载时停止轮询 */
-  useEffect(() => {
-    return () => {
-      store.resetExtracting()
-    }
-  }, [])
 
   // ── 事件处理 ──
 
@@ -84,6 +84,11 @@ export default function UploadedFilesPage() {
     [],
   )
 
+  /** 刷新文件列表 */
+  const handleRefresh = useCallback(() => {
+    store.fetchFiles({ page: currentPage, page_size: store.pageSize, person_id: selectedPersonId, status: statusFilter })
+  }, [store, currentPage, selectedPersonId, statusFilter])
+
   /** 删除文件 */
   const handleDelete = useCallback(async (record: UploadedFileItem) => {
     await store.deleteFile(record.id)
@@ -96,6 +101,15 @@ export default function UploadedFilesPage() {
       await store.triggerExtract(fileId)
     } catch {
       // store 中已处理 error（清除 extracting）
+    }
+  }, [store])
+
+  /** 触发文件切片（用于 uploaded / error 状态） */
+  const handleTriggerChunk = useCallback(async (fileId: string) => {
+    try {
+      await store.triggerChunk(fileId)
+    } catch {
+      // store 中已处理 error
     }
   }, [store])
 
@@ -122,10 +136,6 @@ export default function UploadedFilesPage() {
       setDragOver(false)
       const file = e.dataTransfer.files[0]
       if (!file) return
-      if (!selectedPersonId) {
-        message.error('请先选择人物')
-        return
-      }
       const ext = file.name.split('.').pop()?.toLowerCase()
       if (!ext || !['txt', 'pdf'].includes(ext)) {
         message.error('仅支持 .txt 和 .pdf 格式')
@@ -199,30 +209,38 @@ export default function UploadedFilesPage() {
       width: 260,
       fixed: 'right',
       render: (_: unknown, record: UploadedFileItem) => {
-        const isExtracting = record.status === 'extracting'
-        const extractDisabled =
+        // 抽取按钮：仅 chunked / extracting / completed 状态下显示
+        const showExtract =
+          record.status === 'chunked' ||
           record.status === 'extracting' ||
-          record.status === 'uploaded' ||
-          record.status === 'chunking' ||
-          record.status === 'error'
-        const chunkDisabled = record.status === 'chunking'
+          record.status === 'completed'
+        // 抽取按钮仅 chunked 状态下可点击
+        const extractDisabled = record.status !== 'chunked'
+
+        // 切片按钮：uploaded / error 触发切片操作，其余状态跳转切片页
+        const isSliceTrigger =
+          record.status === 'uploaded' || record.status === 'error'
 
         return (
           <div className="flex gap-1">
+            {showExtract && (
+              <Button
+                type="link"
+                size="small"
+                disabled={extractDisabled}
+                onClick={() => handleExtract(record.id)}
+              >
+                事件抽取
+              </Button>
+            )}
             <Button
               type="link"
               size="small"
-              loading={isExtracting}
-              disabled={extractDisabled}
-              onClick={() => handleExtract(record.id)}
-            >
-              事件抽取
-            </Button>
-            <Button
-              type="link"
-              size="small"
-              disabled={chunkDisabled}
-              onClick={() => handleViewChunks(record.id)}
+              onClick={() =>
+                isSliceTrigger
+                  ? handleTriggerChunk(record.id)
+                  : handleViewChunks(record.id)
+              }
             >
               切片
             </Button>
@@ -258,25 +276,22 @@ export default function UploadedFilesPage() {
         <h2 className="text-lg font-semibold">上传与抽取</h2>
       </div>
 
-      {/* 工具栏：人物搜索 + 上传按钮 */}
+      {/* 工具栏：人物搜索 + 刷新 + 上传按钮 */}
       <div className="flex items-center justify-between gap-4">
-        <div style={{ width: 320 }}>
+        <div style={{ width: 420 }}>
           <PersonSearchSelect
             value={selectedPersonId}
             onChange={handlePersonChange}
             placeholder="选择人物"
           />
         </div>
-        <Upload
+        <div className="flex items-center gap-2">
+          <Button icon={<ReloadOutlined />} onClick={handleRefresh}>刷新</Button>
+          <Upload
           accept=".txt,.pdf"
           showUploadList={false}
           disabled={store.uploading}
           customRequest={async ({ file, onSuccess, onError }) => {
-            if (!selectedPersonId) {
-              message.error('请先选择人物')
-              onError?.(new Error('请先选择人物'))
-              return
-            }
             const ext = (file as File).name.split('.').pop()?.toLowerCase()
             if (!ext || !['txt', 'pdf'].includes(ext)) {
               message.error('仅支持 .txt 和 .pdf 格式')
@@ -294,6 +309,7 @@ export default function UploadedFilesPage() {
         >
           <Button loading={store.uploading}>上传文件</Button>
         </Upload>
+        </div>
       </div>
 
       {/* 上传中提示 */}

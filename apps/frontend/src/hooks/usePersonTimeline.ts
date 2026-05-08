@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { getPerson, listPersonEvents } from '@/api/persons'
 import type { PersonDetail, PersonEventItem } from '@person-timeline/api-types'
 
@@ -7,8 +7,12 @@ export function usePersonTimeline(personId: string | undefined) {
   const [events, setEvents] = useState<PersonEventItem[]>([])
   const [loading, setLoading] = useState(true)
 
+  /** 跳过 StrictMode 重复挂载导致的二次请求 */
+  const loadedIdRef = useRef<string | null>(null)
+
   useEffect(() => {
     if (!personId) return
+    if (loadedIdRef.current === personId) return
     setLoading(true)
     Promise.all([
       getPerson(personId),
@@ -19,6 +23,7 @@ export function usePersonTimeline(personId: string | undefined) {
         setEvents(eventsData.items.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)))
       })
       .finally(() => setLoading(false))
+    return () => { loadedIdRef.current = personId }
   }, [personId])
 
   const [selectedEvent, setSelectedEvent] = useState<PersonEventItem | null>(null)
