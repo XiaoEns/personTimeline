@@ -6,7 +6,7 @@
 ## 技术栈
 - **后端**: Python 3.11+ / FastAPI / PostgreSQL 15+
 - **前端**: React 19 + TypeScript + Vite + Zustand + React Router + Ant Design 5
-- **可视化**: D3.js (SVG)
+- **可视化**: D3.js (SVG) / @xyflow/react (React Flow)
 - **样式**: Tailwind CSS v4
 - **包管理**: pnpm
 
@@ -18,6 +18,8 @@
 src/
 ├── api/              # API 调用层（与后端共享类型）
 ├── components/       # 复用组件
+│   └── react-flow/   # React Flow 画布自定义节点组件
+├── data/             # 静态数据文件（测试数据/数据适配层）
 ├── hooks/            # 自定义 React Hooks
 ├── layouts/          # 布局组件
 ├── pages/            # 页面组件
@@ -26,6 +28,7 @@ src/
 ├── router/           # 路由配置
 ├── stores/           # Zustand 状态管理
 ├── styles/           # 样式
+├── utils/            # 工具函数（如时间轴布局引擎）
 └── mocks/            # MSW 模拟数据
 ```
 
@@ -53,6 +56,7 @@ src/
 
 ### 交互约束
 - **修改端口必须询问用户意见**，不得直接修改服务端口或代理目标端口
+- **禁止未经询问启动后台服务**（dev server、数据库等），端口被占用时也不得擅自 kill 旧进程或切换端口
 
 ### 前后端并行开发
 - 窗口 1（后端）：`uvicorn main:app --reload --port 8000`

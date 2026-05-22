@@ -5,10 +5,10 @@ import 'antd/dist/reset.css'
 import './styles/main.css'
 
 async function bootstrap() {
-  // if (import.meta.env.DEV) {
-  //   const { worker } = await import('./mocks/browser')
-  //   await worker.start({ onUnhandledRequest: 'bypass' })
-  // }
+  if (import.meta.env.DEV) {
+    const { worker } = await import('./mocks/browser')
+    await worker.start({ onUnhandledRequest: 'bypass' })
+  }
 
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
